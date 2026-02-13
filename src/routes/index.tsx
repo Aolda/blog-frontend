@@ -1,8 +1,8 @@
+import { User, PenSquare, ImageIcon, UserCircle, FileText } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PenSquare, ImageIcon, UserCircle, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
@@ -28,14 +28,16 @@ function LandingPage() {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-6">
       <div className="max-w-lg text-center space-y-6">
-        <h1 className="text-4xl font-bold tracking-tight">Aolda Blog</h1>
+        <h1 className="text-4xl font-bold tracking-tight">아올다 블로그 콘솔</h1>
         <p className="text-lg text-muted-foreground">
           블로그 관리 대시보드에 오신 것을 환영합니다.
           <br />
           로그인하여 글을 작성하고 이미지를 관리하세요.
         </p>
         <Button asChild size="lg">
-          <Link to="/login">로그인</Link>
+          <Link to="/login">
+            <User /> 로그인
+          </Link>
         </Button>
       </div>
     </div>
