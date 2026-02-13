@@ -1,0 +1,15 @@
+{
+  "short_name": "아올다 블로그 콘솔",
+  "name": "아올다 블로그 콘솔",
+  "icons": [
+    {
+      "src": "aolda.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
