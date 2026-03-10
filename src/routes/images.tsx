@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
-import { useUploadImage, useDeleteImage } from "@/lib/queries";
+import { useUploadImage, useDeleteImage, usePostImages } from "@/lib/queries";
+import type { ImageResponse } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,76 +11,64 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Upload, Copy, Trash2, ImagePlus, Link, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/images")({ component: ImagesPage });
-
-const STORAGE_KEY = "uploaded-images";
-
-interface UploadedImage {
-  url: string;
-  filename: string;
+interface ImagesSearch {
+  postId?: number;
 }
 
-function loadImages(): UploadedImage[] {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveImages(images: UploadedImage[]) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(images));
-}
-
-function extractFilename(url: string): string {
-  return url.split("/").pop() ?? url;
-}
+export const Route = createFileRoute("/images")({
+  component: ImagesPage,
+  validateSearch: (search: Record<string, unknown>): ImagesSearch => ({
+    postId:
+      typeof search.postId === "number"
+        ? search.postId
+        : typeof search.postId === "string"
+          ? Number(search.postId) || undefined
+          : undefined,
+  }),
+});
 
 function ImagesPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { postId } = Route.useSearch();
   const uploadImage = useUploadImage();
   const deleteImage = useDeleteImage();
+  const { data: images = [], isLoading: isLoadingImages } = usePostImages(postId ?? null);
 
-  const [images, setImages] = useState<UploadedImage[]>(loadImages);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  useEffect(() => {
-    saveImages(images);
-  }, [images]);
+  if (!authLoading && !isAuthenticated) {
+    navigate({ to: "/login" });
+    return null;
+  }
 
   const handleFiles = useCallback(
     (files: FileList | File[]) => {
+      if (!postId) {
+        toast.error("게시글 ID가 필요합니다");
+        return;
+      }
       const fileArr = Array.from(files);
       for (const file of fileArr) {
         if (!file.type.startsWith("image/")) {
           toast.error(`"${file.name}"은(는) 이미지 파일이 아닙니다`);
           continue;
         }
-        uploadImage.mutate(file, {
-          onSuccess: (data) => {
-            const entry: UploadedImage = {
-              url: data.url,
-              filename: extractFilename(data.url),
-            };
-            setImages((prev) => [entry, ...prev]);
-            toast.success("이미지가 업로드되었습니다");
+        uploadImage.mutate(
+          { postId, file },
+          {
+            onSuccess: () => {
+              toast.success("이미지가 업로드되었습니다");
+            },
+            onError: () => {
+              toast.error(`"${file.name}" 업로드에 실패했습니다`);
+            },
           },
-          onError: () => {
-            toast.error(`"${file.name}" 업로드에 실패했습니다`);
-          },
-        });
+        );
       }
     },
-    [uploadImage],
+    [postId, uploadImage],
   );
 
   const handleDrop = useCallback(
@@ -103,17 +92,22 @@ function ImagesPage() {
     setIsDragging(false);
   }, []);
 
-  const handleDelete = (image: UploadedImage) => {
-    deleteImage.mutate(image.filename, {
-      onSuccess: () => {
-        setImages((prev) => prev.filter((i) => i.url !== image.url));
-        toast.success("이미지가 삭제되었습니다");
+  const handleDelete = (image: ImageResponse) => {
+    if (!postId) return;
+    deleteImage.mutate(
+      { imageId: image.id, postId },
+      {
+        onSuccess: () => {
+          toast.success("이미지가 삭제되었습니다");
+        },
+        onError: () => {
+          toast.error("삭제에 실패했습니다");
+        },
       },
-      onError: () => {
-        toast.error("삭제에 실패했습니다");
-      },
-    });
+    );
   };
+
+  const extractFilename = (url: string) => url.split("/").pop() ?? url;
 
   const copyMarkdown = async (url: string) => {
     try {
@@ -137,11 +131,27 @@ function ImagesPage() {
     return null;
   }
 
+  if (!postId) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+        <div className="flex items-center gap-3">
+          <ImagePlus className="size-6 text-primary" />
+          <h1 className="text-2xl font-bold tracking-tight">이미지 관리</h1>
+        </div>
+        <Separator />
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          게시글 ID가 필요합니다. 글 작성 페이지에서 이미지를 관리해주세요.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
       <div className="flex items-center gap-3">
         <ImagePlus className="size-6 text-primary" />
         <h1 className="text-2xl font-bold tracking-tight">이미지 관리</h1>
+        <Badge variant="secondary">게시글 #{postId}</Badge>
         <Badge variant="secondary">{images.length}개</Badge>
       </div>
 
@@ -188,16 +198,22 @@ function ImagesPage() {
         />
       </div>
 
-      {images.length > 0 && (
+      {isLoadingImages && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {!isLoadingImages && images.length > 0 && (
         <ScrollArea className="h-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {images.map((image) => (
-              <Card key={image.url} className="overflow-hidden">
+              <Card key={image.id} className="overflow-hidden">
                 <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
-                  <img src={image.url} alt={image.filename} className="size-full object-cover" />
+                  <img src={image.url} alt={extractFilename(image.url)} className="size-full object-cover" />
                 </div>
                 <CardHeader className="pb-0">
-                  <CardTitle className="text-xs font-mono truncate">{image.filename}</CardTitle>
+                  <CardTitle className="text-xs font-mono truncate">{extractFilename(image.url)}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -226,7 +242,7 @@ function ImagesPage() {
         </ScrollArea>
       )}
 
-      {images.length === 0 && (
+      {!isLoadingImages && images.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">업로드된 이미지가 없습니다.</div>
       )}
     </div>

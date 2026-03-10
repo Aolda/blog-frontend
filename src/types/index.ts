@@ -24,7 +24,28 @@ export interface PostTemplate {
 }
 
 export interface ImageUploadResponse {
+  id: number;
+  post_id: number;
   url: string;
+}
+
+export interface ImageResponse {
+  id: number;
+  post_id: number;
+  url: string;
+  created_at: string;
+}
+
+export interface PostResponse {
+  id: number;
+  author_id: number;
+  views: number;
+  created_at: string;
+  content: string;
+}
+
+export interface SavePostContentRequest {
+  content: string;
 }
 
 export interface ViewsResponse {

@@ -1,76 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useUploadImage, useDeleteImage } from "@/lib/queries";
+import { useCallback, useRef, useState } from "react";
+import { useUploadImage, useDeleteImage, usePostImages } from "@/lib/queries";
+import type { ImageResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Upload, Copy, Trash2, Link, Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 
-const STORAGE_KEY = "uploaded-images";
-
-export interface UploadedImage {
-  url: string;
-  filename: string;
-}
-
-function loadImages(): UploadedImage[] {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveImages(images: UploadedImage[]) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(images));
-}
-
-function extractFilename(url: string): string {
-  return url.split("/").pop() ?? url;
-}
-
 interface ImagePanelProps {
+  postId: number | null;
   onInsert?: (markdown: string) => void;
 }
 
-export default function ImagePanel({ onInsert }: ImagePanelProps) {
+export default function ImagePanel({ postId, onInsert }: ImagePanelProps) {
   const uploadImage = useUploadImage();
   const deleteImage = useDeleteImage();
+  const { data: images = [], isLoading: isLoadingImages } = usePostImages(postId);
 
-  const [images, setImages] = useState<UploadedImage[]>(loadImages);
   const [isDragging, setIsDragging] = useState(false);
-  const [previewImage, setPreviewImage] = useState<UploadedImage | null>(null);
+  const [previewImage, setPreviewImage] = useState<ImageResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    saveImages(images);
-  }, [images]);
 
   const handleFiles = useCallback(
     (files: FileList | File[]) => {
+      if (postId === null) {
+        toast.error("게시글이 아직 생성되지 않았습니다");
+        return;
+      }
       const fileArr = Array.from(files);
       for (const file of fileArr) {
         if (!file.type.startsWith("image/")) {
           toast.error(`"${file.name}"은(는) 이미지 파일이 아닙니다`);
           continue;
         }
-        uploadImage.mutate(file, {
-          onSuccess: (data) => {
-            const entry: UploadedImage = {
-              url: data.url,
-              filename: extractFilename(data.url),
-            };
-            setImages((prev) => [entry, ...prev]);
-            toast.success("이미지가 업로드되었습니다");
+        uploadImage.mutate(
+          { postId, file },
+          {
+            onSuccess: () => {
+              toast.success("이미지가 업로드되었습니다");
+            },
+            onError: () => {
+              toast.error(`"${file.name}" 업로드에 실패했습니다`);
+            },
           },
-          onError: () => {
-            toast.error(`"${file.name}" 업로드에 실패했습니다`);
-          },
-        });
+        );
       }
     },
-    [uploadImage],
+    [postId, uploadImage],
   );
 
   const handleDrop = useCallback(
@@ -94,20 +70,23 @@ export default function ImagePanel({ onInsert }: ImagePanelProps) {
     setIsDragging(false);
   }, []);
 
-  const handleDelete = (image: UploadedImage) => {
-    deleteImage.mutate(image.filename, {
-      onSuccess: () => {
-        setImages((prev) => prev.filter((i) => i.url !== image.url));
-        if (previewImage?.url === image.url) setPreviewImage(null);
-        toast.success("이미지가 삭제되었습니다");
+  const handleDelete = (image: ImageResponse) => {
+    if (postId === null) return;
+    deleteImage.mutate(
+      { imageId: image.id, postId },
+      {
+        onSuccess: () => {
+          if (previewImage?.id === image.id) setPreviewImage(null);
+          toast.success("이미지가 삭제되었습니다");
+        },
+        onError: () => {
+          toast.error("삭제에 실패했습니다");
+        },
       },
-      onError: () => {
-        toast.error("삭제에 실패했습니다");
-      },
-    });
+    );
   };
 
-  const handleInsert = (image: UploadedImage) => {
+  const handleInsert = (image: ImageResponse) => {
     const md = `![image](${image.url})`;
     if (onInsert) {
       onInsert(md);
@@ -128,6 +107,16 @@ export default function ImagePanel({ onInsert }: ImagePanelProps) {
       toast.error("복사에 실패했습니다");
     }
   };
+
+  const extractFilename = (url: string) => url.split("/").pop() ?? url;
+
+  if (postId === null) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-xs text-muted-foreground">게시글 생성 후 이미지를 업로드할 수 있습니다</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -176,7 +165,11 @@ export default function ImagePanel({ onInsert }: ImagePanelProps) {
           >
             <X className="size-3.5" />
           </button>
-          <img src={previewImage.url} alt={previewImage.filename} className="w-full max-h-48 object-contain" />
+          <img
+            src={previewImage.url}
+            alt={extractFilename(previewImage.url)}
+            className="w-full max-h-48 object-contain"
+          />
           <div className="flex items-center gap-1 p-2">
             <Button variant="outline" size="xs" className="flex-1" onClick={() => handleInsert(previewImage)}>
               <ImagePlus className="size-3" />
@@ -198,21 +191,25 @@ export default function ImagePanel({ onInsert }: ImagePanelProps) {
       )}
 
       <ScrollArea className="mt-3 flex-1">
-        {images.length === 0 ? (
+        {isLoadingImages ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : images.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">업로드된 이미지가 없습니다</p>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
             {images.map((image) => (
-              <div key={image.url} className="group relative">
+              <div key={image.id} className="group relative">
                 <button
                   onClick={() => setPreviewImage(image)}
                   className={`
                     block w-full overflow-hidden rounded-md border aspect-square
                     transition-all hover:ring-2 hover:ring-primary/50
-                    ${previewImage?.url === image.url ? "ring-2 ring-primary" : ""}
+                    ${previewImage?.id === image.id ? "ring-2 ring-primary" : ""}
                   `}
                 >
-                  <img src={image.url} alt={image.filename} className="size-full object-cover" />
+                  <img src={image.url} alt={extractFilename(image.url)} className="size-full object-cover" />
                 </button>
 
                 <div className="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">

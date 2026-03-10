@@ -4,7 +4,10 @@ import type {
   User,
   Token,
   PostTemplate,
+  PostResponse,
   ImageUploadResponse,
+  ImageResponse,
+  SavePostContentRequest,
   LoginRequest,
   RegisterRequest,
   GoogleFinishRequest,
@@ -68,22 +71,52 @@ export function useCreateTemplate() {
 }
 
 export function useUploadImage() {
-  return useMutation<ImageUploadResponse, Error, File>({
-    mutationFn: async (file) => {
+  const queryClient = useQueryClient();
+  return useMutation<ImageUploadResponse, Error, { postId: number; file: File }>({
+    mutationFn: async ({ postId, file }) => {
       const formData = new FormData();
+      formData.append("post_id", String(postId));
       formData.append("file", file);
       const { data } = await api.post<ImageUploadResponse>("/images/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return data;
     },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["postImages", variables.postId] });
+    },
   });
 }
 
 export function useDeleteImage() {
-  return useMutation<void, Error, string>({
-    mutationFn: async (filename) => {
-      await api.delete(`/images/${filename}`);
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { imageId: number; postId: number }>({
+    mutationFn: async ({ imageId }) => {
+      await api.delete(`/images/${imageId}`);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["postImages", variables.postId] });
+    },
+  });
+}
+
+export function usePostImages(postId: number | null) {
+  return useQuery<ImageResponse[]>({
+    queryKey: ["postImages", postId],
+    queryFn: async () => {
+      const { data } = await api.get<ImageResponse[]>(`/images/posts/${postId}`);
+      return data;
+    },
+    enabled: postId !== null,
+  });
+}
+
+export function useSavePostContent() {
+  return useMutation<PostResponse, Error, { postId: number; content: string }>({
+    mutationFn: async ({ postId, content }) => {
+      const body: SavePostContentRequest = { content };
+      const { data } = await api.put<PostResponse>(`/posts/${postId}/content`, body);
+      return data;
     },
   });
 }

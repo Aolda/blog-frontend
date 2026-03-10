@@ -37,7 +37,7 @@ function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">로그인</CardTitle>
-          <CardDescription>Aolda Blog에 로그인하세요</CardDescription>
+          <CardDescription>아올다 블로그 콘솔에 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <Button variant="outline" className="w-full" size="lg" onClick={handleGoogleLogin}>
@@ -68,6 +68,7 @@ function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="비밀번호"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

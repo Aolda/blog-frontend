@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, Check } from "lucide-react";
+import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, Check, Send } from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
+import { useSavePostContent } from "@/lib/queries";
 
 interface WriteSearch {
   draftId?: string;
@@ -47,6 +48,8 @@ function WritePage() {
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
   const [retrySeed, setRetrySeed] = useState(0);
+
+  const savePostContent = useSavePostContent();
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,6 +165,25 @@ function WritePage() {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     persistDraft(frontmatter, body);
     toast.success("임시저장 완료");
+  };
+
+  const handlePublish = () => {
+    if (!template) {
+      toast.error("게시글이 아직 생성되지 않았습니다");
+      return;
+    }
+    const content = frontmatter + "\n" + body;
+    savePostContent.mutate(
+      { postId: template.post_id, content },
+      {
+        onSuccess: () => {
+          toast.success("게시글이 저장되었습니다");
+        },
+        onError: () => {
+          toast.error("게시글 저장에 실패했습니다");
+        },
+      },
+    );
   };
 
   const handleInsertImage = useCallback(
@@ -315,9 +337,19 @@ function WritePage() {
 
           <Separator orientation="vertical" className="mx-1 h-5" />
 
-          <Button size="sm" onClick={handleCopy} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
             <Copy className="size-3.5" />
             복사
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handlePublish}
+            disabled={savePostContent.isPending || !template}
+            className="gap-1.5"
+          >
+            {savePostContent.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+            발행
           </Button>
         </div>
       </div>
@@ -379,7 +411,7 @@ function WritePage() {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden p-3">
-                <ImagePanel onInsert={handleInsertImage} />
+                <ImagePanel postId={template?.post_id ?? null} onInsert={handleInsertImage} />
               </div>
             </div>
           </>
