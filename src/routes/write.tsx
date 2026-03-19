@@ -2,26 +2,67 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
-import { splitContent, parseFrontmatter } from "@/lib/frontmatter";
 import api from "@/lib/api";
 import type { PostTemplate } from "@/types";
 import { usePost, useSavePostContent } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Send } from "lucide-react";
+import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, X, Plus } from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
 
 interface WriteSearch {
   postId?: number;
 }
 
+interface FrontmatterContext {
+  date: string;
+  author: string[];
+}
+
 function isRequestCanceled(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const e = error as { name?: string; code?: string };
   return e.name === "AbortError" || e.name === "CanceledError" || e.code === "ERR_CANCELED";
+}
+
+function formatYamlString(value: string): string {
+  return JSON.stringify(value);
+}
+
+function formatYamlArray(values: string[]): string {
+  return `[${values.map((value) => formatYamlString(value)).join(", ")}]`;
+}
+
+function buildFullContent(
+  metadata: {
+    title: string;
+    description: string;
+    tags: string[];
+    image: string;
+    body: string;
+  },
+  context: FrontmatterContext | null,
+): string {
+  if (!context) {
+    return metadata.body;
+  }
+
+  return [
+    "---",
+    `title: ${formatYamlString(metadata.title)}`,
+    `description: ${formatYamlString(metadata.description)}`,
+    `date: ${context.date}`,
+    `tags: ${formatYamlArray(metadata.tags)}`,
+    `image: ${formatYamlString(metadata.image)}`,
+    `author: ${formatYamlArray(context.author)}`,
+    "---",
+    "",
+    metadata.body,
+  ].join("\n");
 }
 
 export const Route = createFileRoute("/write")({
@@ -44,8 +85,14 @@ function WritePage() {
   const templateRequestSeq = useRef(0);
 
   const [activePostId, setActivePostId] = useState<number | null>(editPostId ?? null);
-  const [frontmatter, setFrontmatter] = useState("");
+  // 메타데이터 상태 (분리된 필드)
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [image, setImage] = useState("");
   const [body, setBody] = useState("");
+  const [frontmatterContext, setFrontmatterContext] = useState<FrontmatterContext | null>(null);
   const [showImages, setShowImages] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
@@ -69,15 +116,21 @@ function WritePage() {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  // 편집 모드: 서버에서 기존 게시글 content 로드
+  // 편집 모드: 서버에서 기존 게시글 로드
   useEffect(() => {
     if (!isEditMode || !existingPost || hasInitialized.current) return;
     hasInitialized.current = true;
 
-    const { frontmatter: fm, body: bd } = splitContent(existingPost.content ?? "");
     setActivePostId(existingPost.id);
-    setFrontmatter(fm);
-    setBody(bd);
+    setTitle(existingPost.title ?? "");
+    setDescription(existingPost.description ?? "");
+    setTags(existingPost.tags ?? []);
+    setImage(existingPost.image ?? "");
+    setBody(existingPost.content ?? "");
+    setFrontmatterContext({
+      date: existingPost.frontmatter.date,
+      author: existingPost.frontmatter.author,
+    });
   }, [isEditMode, existingPost]);
 
   // 새 글 작성 모드: 템플릿 생성
@@ -100,7 +153,16 @@ function WritePage() {
         });
         if (!isActive || requestSeq !== templateRequestSeq.current) return;
         setActivePostId(data.post_id);
-        setFrontmatter(data.frontmatter_example);
+        // 메타데이터는 빈 값으로 초기화
+        setTitle("");
+        setDescription("");
+        setTags([]);
+        setImage("");
+        setBody("");
+        setFrontmatterContext({
+          date: data.created_at,
+          author: [data.author_name],
+        });
       } catch (error) {
         if (!isActive || requestSeq !== templateRequestSeq.current) return;
         setCreateTemplateError(
@@ -126,14 +188,20 @@ function WritePage() {
     };
   }, [isAuthenticated, retrySeed, isEditMode]);
 
-  const handlePublish = () => {
+  const handleSave = () => {
     if (!activePostId) {
       toast.error("게시글이 아직 생성되지 않았습니다");
       return;
     }
-    const content = frontmatter + "\n" + body;
     savePostContent.mutate(
-      { postId: activePostId, content },
+      {
+        postId: activePostId,
+        title: title || null,
+        description: description || null,
+        tags,
+        image: image || null,
+        content: body,
+      },
       {
         onSuccess: () => {
           toast.success("게시글이 저장되었습니다");
@@ -145,6 +213,34 @@ function WritePage() {
       },
     );
   };
+
+  // 태그 추가
+  const addTag = useCallback(() => {
+    const trimmed = tagInput.trim();
+    if (!trimmed) return;
+    if (tags.includes(trimmed)) {
+      toast.error("이미 존재하는 태그입니다");
+      return;
+    }
+    setTags((prev) => [...prev, trimmed]);
+    setTagInput("");
+  }, [tagInput, tags]);
+
+  // 태그 삭제
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+  }, []);
+
+  // 태그 입력 키 핸들러
+  const handleTagKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addTag();
+      }
+    },
+    [addTag],
+  );
 
   const handleInsertImage = useCallback((markdown: string) => {
     const textarea = bodyRef.current;
@@ -239,9 +335,8 @@ function WritePage() {
     );
   }
 
-  const fullContent = frontmatter + "\n" + body;
-  const meta = parseFrontmatter(frontmatter);
-  const currentTitle = meta.title || "제목 없음";
+  const fullContent = buildFullContent({ title, description, tags, image, body }, frontmatterContext);
+  const currentTitle = title || "제목 없음";
 
   const handleCopy = async () => {
     try {
@@ -307,12 +402,12 @@ function WritePage() {
 
           <Button
             size="sm"
-            onClick={handlePublish}
+            onClick={handleSave}
             disabled={savePostContent.isPending || !activePostId}
             className="gap-1.5"
           >
-            {savePostContent.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-            {isEditMode ? "저장" : "발행"}
+            {savePostContent.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            저장하기
           </Button>
         </div>
       </div>
@@ -320,18 +415,93 @@ function WritePage() {
       <div className="flex flex-1 overflow-hidden">
         <div className={`flex flex-1 flex-col overflow-hidden ${showPreview ? "lg:flex-row" : ""}`}>
           <div className={`flex flex-col overflow-y-auto ${showPreview ? "lg:w-1/2 lg:border-r" : ""}`}>
+            {/* 메타데이터 폼 */}
             <div className="border-b">
-              <div className="flex items-center gap-2 px-4 py-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Frontmatter</span>
+              <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">메타데이터</span>
               </div>
-              <Textarea
-                value={frontmatter}
-                onChange={(e) => setFrontmatter(e.target.value)}
-                className="rounded-none border-0 border-t font-mono text-sm shadow-none focus-visible:ring-0 min-h-[120px] resize-none"
-                placeholder="---&#10;title: ''&#10;---"
-              />
+              <div className="p-4 space-y-4">
+                {/* 제목 */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">제목</label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="게시글 제목"
+                    className="text-sm"
+                  />
+                </div>
+
+                {/* 설명 */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">설명</label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="게시글 설명 (선택)"
+                    className="text-sm min-h-[60px] resize-none"
+                  />
+                </div>
+
+                {/* 태그 */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">태그</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      placeholder="태그 입력 후 Enter"
+                      className="text-sm flex-1"
+                    />
+                    <Button variant="outline" size="sm" onClick={addTag} disabled={!tagInput.trim()}>
+                      <Plus className="size-4" />
+                    </Button>
+                  </div>
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1 hover:text-destructive transition-colors"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 커버 이미지 */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">커버 이미지 URL</label>
+                  <Input
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder="이미지 URL (선택)"
+                    className="text-sm"
+                  />
+                  {image && (
+                    <div className="mt-2 rounded-md overflow-hidden border">
+                      <img
+                        src={image}
+                        alt="커버 이미지 미리보기"
+                        className="w-full h-32 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
+            {/* 본문 */}
             <div className="flex flex-1 flex-col">
               <div className="flex items-center gap-2 px-4 py-2 border-b">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">본문 (MDX)</span>

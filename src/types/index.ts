@@ -36,33 +36,46 @@ export interface ImageResponse {
   created_at: string;
 }
 
-export interface PostResponse {
-  id: number;
-  author_id: number;
-  views: number;
-  created_at: string;
-  content: string;
-}
-
-/** 목록과 상세 응답 구조가 동일 */
-export type PostSummaryResponse = PostResponse;
-
-export interface SavePostContentRequest {
-  content: string;
-}
-
-export interface ViewsResponse {
-  views: number;
-}
-
-/** content 문자열에서 파싱한 frontmatter 메타데이터 */
-export interface PostMeta {
+/** 서버가 생성하는 frontmatter 객체 */
+export interface PostFrontmatter {
   title: string;
   description: string;
   date: string;
   tags: string[];
   image: string;
   author: string[];
+}
+
+/** 게시글 목록 응답 (content 없음) */
+export interface PostSummaryResponse {
+  id: number;
+  author_id: number | null;
+  views: number;
+  created_at: string;
+  title: string | null;
+  description: string | null;
+  tags: string[];
+  image: string | null;
+  frontmatter: PostFrontmatter;
+  frontmatter_header: string;
+}
+
+/** 게시글 상세 응답 (content 포함) */
+export interface PostResponse extends PostSummaryResponse {
+  content: string | null;
+}
+
+/** 게시글 저장 요청 (메타데이터 + 본문 분리) */
+export interface PostContentUpdateRequest {
+  title: string | null;
+  description: string | null;
+  tags: string[];
+  image: string | null;
+  content: string;
+}
+
+export interface ViewsResponse {
+  views: number;
 }
 
 export interface RegisterRequest {

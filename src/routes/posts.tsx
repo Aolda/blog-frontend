@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
 import { usePosts } from "@/lib/queries";
-import { parsePostMeta } from "@/lib/frontmatter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,11 +76,10 @@ function PostsPage() {
       ) : (
         <div className="space-y-3">
           {posts.map((post) => {
-            const meta = post.content ? parsePostMeta(post.content) : null;
-            const title = meta?.title || "제목 없음";
-            const description = meta?.description || "";
-            const tags = meta?.tags ?? [];
-            const date = meta?.date || post.created_at.split("T")[0];
+            const title = post.title ?? "제목 없음";
+            const description = post.description ?? "";
+            const tags = post.tags ?? [];
+            const date = post.frontmatter?.date || post.created_at.split("T")[0];
 
             return (
               <Card key={post.id} className="group transition-colors hover:border-primary/30">

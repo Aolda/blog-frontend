@@ -8,7 +8,7 @@ import type {
   PostSummaryResponse,
   ImageUploadResponse,
   ImageResponse,
-  SavePostContentRequest,
+  PostContentUpdateRequest,
   LoginRequest,
   RegisterRequest,
   GoogleFinishRequest,
@@ -58,15 +58,6 @@ export function useUpdateProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["me"] });
-    },
-  });
-}
-
-export function useCreateTemplate() {
-  return useMutation<PostTemplate, Error, void>({
-    mutationFn: async () => {
-      const { data } = await api.post<PostTemplate>("/posts/template");
-      return data;
     },
   });
 }
@@ -139,9 +130,26 @@ export function usePostImages(postId: number | null) {
 
 export function useSavePostContent() {
   const queryClient = useQueryClient();
-  return useMutation<PostResponse, Error, { postId: number; content: string }>({
-    mutationFn: async ({ postId, content }) => {
-      const body: SavePostContentRequest = { content };
+  return useMutation<
+    PostResponse,
+    Error,
+    {
+      postId: number;
+      title: string | null;
+      description: string | null;
+      tags: string[];
+      image: string | null;
+      content: string;
+    }
+  >({
+    mutationFn: async ({ postId, title, description, tags, image, content }) => {
+      const body: PostContentUpdateRequest = {
+        title,
+        description,
+        tags,
+        image,
+        content,
+      };
       const { data } = await api.put<PostResponse>(`/posts/${postId}/content`, body);
       return data;
     },
