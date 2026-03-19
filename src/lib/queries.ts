@@ -5,6 +5,7 @@ import type {
   Token,
   PostTemplate,
   PostResponse,
+  PostSummaryResponse,
   ImageUploadResponse,
   ImageResponse,
   SavePostContentRequest,
@@ -70,6 +71,31 @@ export function useCreateTemplate() {
   });
 }
 
+export function usePosts(page = 1, limit = 20) {
+  return useQuery<PostSummaryResponse[]>({
+    queryKey: ["posts", page, limit],
+    queryFn: async () => {
+      const { data } = await api.get<PostSummaryResponse[]>("/posts", {
+        params: { page, limit },
+      });
+      return data;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+}
+
+export function usePost(postId: number | null) {
+  return useQuery<PostResponse>({
+    queryKey: ["post", postId],
+    queryFn: async () => {
+      const { data } = await api.get<PostResponse>(`/posts/${postId}`);
+      return data;
+    },
+    enabled: postId !== null,
+  });
+}
+
 export function useUploadImage() {
   const queryClient = useQueryClient();
   return useMutation<ImageUploadResponse, Error, { postId: number; file: File }>({
@@ -112,11 +138,16 @@ export function usePostImages(postId: number | null) {
 }
 
 export function useSavePostContent() {
+  const queryClient = useQueryClient();
   return useMutation<PostResponse, Error, { postId: number; content: string }>({
     mutationFn: async ({ postId, content }) => {
       const body: SavePostContentRequest = { content };
       const { data } = await api.put<PostResponse>(`/posts/${postId}/content`, body);
       return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["post", variables.postId] });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 }

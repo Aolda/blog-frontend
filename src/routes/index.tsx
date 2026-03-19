@@ -1,4 +1,4 @@
-import { User, PenSquare, ImageIcon, UserCircle, FileText } from "lucide-react";
+import { User, PenSquare, ImageIcon, UserCircle, Newspaper } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,11 +52,12 @@ const actions = [
     to: "/write" as const,
   },
   {
-    title: "임시저장",
-    description: "작성 중인 글을 확인하고 이어서 작성합니다.",
-    icon: FileText,
-    to: "/drafts" as const,
+    title: "게시글 관리",
+    description: "발행된 게시글을 확인하고 수정합니다.",
+    icon: Newspaper,
+    to: "/posts" as const,
   },
+
   {
     title: "이미지 관리",
     description: "이미지를 업로드하고 마크다운 링크를 복사합니다.",

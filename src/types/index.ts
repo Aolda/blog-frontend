@@ -44,12 +44,25 @@ export interface PostResponse {
   content: string;
 }
 
+/** 목록과 상세 응답 구조가 동일 */
+export type PostSummaryResponse = PostResponse;
+
 export interface SavePostContentRequest {
   content: string;
 }
 
 export interface ViewsResponse {
   views: number;
+}
+
+/** content 문자열에서 파싱한 frontmatter 메타데이터 */
+export interface PostMeta {
+  title: string;
+  description: string;
+  date: string;
+  tags: string[];
+  image: string;
+  author: string[];
 }
 
 export interface RegisterRequest {

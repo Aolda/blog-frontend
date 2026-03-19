@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WriteRouteImport } from './routes/write'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ImagesRouteImport } from './routes/images'
-import { Route as DraftsRouteImport } from './routes/drafts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegisterGoogleRouteImport } from './routes/register/google'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -28,6 +28,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -36,11 +41,6 @@ const LoginRoute = LoginRouteImport.update({
 const ImagesRoute = ImagesRouteImport.update({
   id: '/images',
   path: '/images',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DraftsRoute = DraftsRouteImport.update({
-  id: '/drafts',
-  path: '/drafts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -61,9 +61,9 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/drafts': typeof DraftsRoute
   '/images': typeof ImagesRoute
   '/login': typeof LoginRoute
+  '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -71,9 +71,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/drafts': typeof DraftsRoute
   '/images': typeof ImagesRoute
   '/login': typeof LoginRoute
+  '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -82,9 +82,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/drafts': typeof DraftsRoute
   '/images': typeof ImagesRoute
   '/login': typeof LoginRoute
+  '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -94,9 +94,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/drafts'
     | '/images'
     | '/login'
+    | '/posts'
     | '/profile'
     | '/write'
     | '/auth/callback'
@@ -104,9 +104,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/drafts'
     | '/images'
     | '/login'
+    | '/posts'
     | '/profile'
     | '/write'
     | '/auth/callback'
@@ -114,9 +114,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/drafts'
     | '/images'
     | '/login'
+    | '/posts'
     | '/profile'
     | '/write'
     | '/auth/callback'
@@ -125,9 +125,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DraftsRoute: typeof DraftsRoute
   ImagesRoute: typeof ImagesRoute
   LoginRoute: typeof LoginRoute
+  PostsRoute: typeof PostsRoute
   ProfileRoute: typeof ProfileRoute
   WriteRoute: typeof WriteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -150,6 +150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -162,13 +169,6 @@ declare module '@tanstack/react-router' {
       path: '/images'
       fullPath: '/images'
       preLoaderRoute: typeof ImagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/drafts': {
-      id: '/drafts'
-      path: '/drafts'
-      fullPath: '/drafts'
-      preLoaderRoute: typeof DraftsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -197,9 +197,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DraftsRoute: DraftsRoute,
   ImagesRoute: ImagesRoute,
   LoginRoute: LoginRoute,
+  PostsRoute: PostsRoute,
   ProfileRoute: ProfileRoute,
   WriteRoute: WriteRoute,
   AuthCallbackRoute: AuthCallbackRoute,

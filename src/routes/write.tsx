@@ -2,20 +2,20 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
-import { getDraft, createDraft, updateDraft, extractTitle } from "@/lib/drafts";
+import { splitContent, parseFrontmatter } from "@/lib/frontmatter";
 import api from "@/lib/api";
 import type { PostTemplate } from "@/types";
+import { usePost, useSavePostContent } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, Check, Send } from "lucide-react";
+import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Send } from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
-import { useSavePostContent } from "@/lib/queries";
 
 interface WriteSearch {
-  draftId?: string;
+  postId?: number;
 }
 
 function isRequestCanceled(error: unknown): boolean {
@@ -27,84 +27,80 @@ function isRequestCanceled(error: unknown): boolean {
 export const Route = createFileRoute("/write")({
   component: WritePage,
   validateSearch: (search: Record<string, unknown>): WriteSearch => ({
-    draftId: typeof search.draftId === "string" ? search.draftId : undefined,
+    postId:
+      typeof search.postId === "number"
+        ? search.postId
+        : typeof search.postId === "string"
+          ? Number(search.postId) || undefined
+          : undefined,
   }),
 });
 
 function WritePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { draftId } = Route.useSearch();
+  const { postId: editPostId } = Route.useSearch();
   const navigate = useNavigate();
   const hasInitialized = useRef(false);
   const templateRequestSeq = useRef(0);
 
-  const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId ?? null);
-  const [template, setTemplate] = useState<PostTemplate | null>(null);
+  const [activePostId, setActivePostId] = useState<number | null>(editPostId ?? null);
   const [frontmatter, setFrontmatter] = useState("");
   const [body, setBody] = useState("");
   const [showImages, setShowImages] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
   const [retrySeed, setRetrySeed] = useState(0);
 
+  const isEditMode = editPostId !== undefined;
+  const {
+    data: existingPost,
+    isLoading: isLoadingPost,
+    isError: isPostError,
+  } = usePost(isEditMode ? editPostId : null);
+
   const savePostContent = useSavePostContent();
-
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 인증 확인
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate({ to: "/login" });
     }
   }, [authLoading, isAuthenticated, navigate]);
 
+  // 편집 모드: 서버에서 기존 게시글 content 로드
   useEffect(() => {
-    if (!isAuthenticated || hasInitialized.current) return;
+    if (!isEditMode || !existingPost || hasInitialized.current) return;
     hasInitialized.current = true;
 
-    if (draftId) {
-      const existing = getDraft(draftId);
-      if (existing) {
-        setCurrentDraftId(existing.id);
-        setFrontmatter(existing.frontmatter);
-        setBody(existing.body);
-        if (existing.postId) {
-          setTemplate({
-            post_id: existing.postId,
-            author_name: "",
-            created_at: existing.createdAt,
-            frontmatter_example: existing.frontmatter,
-          });
-        }
-        setIsCreatingTemplate(false);
-        setCreateTemplateError(null);
-        return;
-      }
-    }
+    const { frontmatter: fm, body: bd } = splitContent(existingPost.content ?? "");
+    setActivePostId(existingPost.id);
+    setFrontmatter(fm);
+    setBody(bd);
+  }, [isEditMode, existingPost]);
+
+  // 새 글 작성 모드: 템플릿 생성
+  useEffect(() => {
+    if (isEditMode) return;
+    if (!isAuthenticated || hasInitialized.current) return;
+    hasInitialized.current = true;
 
     let isActive = true;
     const requestSeq = ++templateRequestSeq.current;
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      controller.abort();
-    }, 15000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
     setIsCreatingTemplate(true);
     setCreateTemplateError(null);
 
     const initializeTemplate = async () => {
       try {
-        const { data } = await api.post<PostTemplate>("/posts/template", undefined, { signal: controller.signal });
-        if (!isActive || requestSeq !== templateRequestSeq.current) return;
-        setTemplate(data);
-        setFrontmatter(data.frontmatter_example);
-        const draft = createDraft({
-          postId: data.post_id,
-          frontmatter: data.frontmatter_example,
-          body: "",
+        const { data } = await api.post<PostTemplate>("/posts/template", undefined, {
+          signal: controller.signal,
         });
-        setCurrentDraftId(draft.id);
+        if (!isActive || requestSeq !== templateRequestSeq.current) return;
+        setActivePostId(data.post_id);
+        setFrontmatter(data.frontmatter_example);
       } catch (error) {
         if (!isActive || requestSeq !== templateRequestSeq.current) return;
         setCreateTemplateError(
@@ -128,56 +124,20 @@ function WritePage() {
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [isAuthenticated, draftId, retrySeed]);
-
-  const persistDraft = useCallback(
-    (fm: string, bd: string) => {
-      if (!currentDraftId) return;
-      setSaveState("saving");
-      updateDraft(currentDraftId, { frontmatter: fm, body: bd });
-      setTimeout(() => {
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2000);
-      }, 300);
-    },
-    [currentDraftId],
-  );
-
-  const scheduleAutoSave = useCallback(
-    (fm: string, bd: string) => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-      autoSaveTimer.current = setTimeout(() => persistDraft(fm, bd), 1500);
-    },
-    [persistDraft],
-  );
-
-  const handleFrontmatterChange = (value: string) => {
-    setFrontmatter(value);
-    scheduleAutoSave(value, body);
-  };
-
-  const handleBodyChange = (value: string) => {
-    setBody(value);
-    scheduleAutoSave(frontmatter, value);
-  };
-
-  const handleManualSave = () => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    persistDraft(frontmatter, body);
-    toast.success("임시저장 완료");
-  };
+  }, [isAuthenticated, retrySeed, isEditMode]);
 
   const handlePublish = () => {
-    if (!template) {
+    if (!activePostId) {
       toast.error("게시글이 아직 생성되지 않았습니다");
       return;
     }
     const content = frontmatter + "\n" + body;
     savePostContent.mutate(
-      { postId: template.post_id, content },
+      { postId: activePostId, content },
       {
         onSuccess: () => {
           toast.success("게시글이 저장되었습니다");
+          navigate({ to: "/posts" });
         },
         onError: () => {
           toast.error("게시글 저장에 실패했습니다");
@@ -186,40 +146,31 @@ function WritePage() {
     );
   };
 
-  const handleInsertImage = useCallback(
-    (markdown: string) => {
-      const textarea = bodyRef.current;
-      if (!textarea) {
-        setBody((prev) => {
-          const next = prev + "\n" + markdown + "\n";
-          scheduleAutoSave(frontmatter, next);
-          return next;
-        });
-        return;
-      }
+  const handleInsertImage = useCallback((markdown: string) => {
+    const textarea = bodyRef.current;
+    if (!textarea) {
+      setBody((prev) => prev + "\n" + markdown + "\n");
+      return;
+    }
 
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const before = textarea.value.substring(0, start);
-      const after = textarea.value.substring(end);
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
 
-      const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
-      const needsNewlineAfter = after.length > 0 && !after.startsWith("\n");
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+    const needsNewlineAfter = after.length > 0 && !after.startsWith("\n");
+    const insertion = (needsNewlineBefore ? "\n" : "") + markdown + (needsNewlineAfter ? "\n" : "");
 
-      const insertion = (needsNewlineBefore ? "\n" : "") + markdown + (needsNewlineAfter ? "\n" : "");
+    const newValue = before + insertion + after;
+    setBody(newValue);
 
-      const newValue = before + insertion + after;
-      setBody(newValue);
-      scheduleAutoSave(frontmatter, newValue);
-
-      requestAnimationFrame(() => {
-        const newPos = before.length + insertion.length;
-        textarea.focus();
-        textarea.setSelectionRange(newPos, newPos);
-      });
-    },
-    [frontmatter, scheduleAutoSave],
-  );
+    requestAnimationFrame(() => {
+      const newPos = before.length + insertion.length;
+      textarea.focus();
+      textarea.setSelectionRange(newPos, newPos);
+    });
+  }, []);
 
   const handleBodyDrop = useCallback(
     (e: React.DragEvent<HTMLTextAreaElement>) => {
@@ -236,19 +187,30 @@ function WritePage() {
     return null;
   }
 
-  const fullContent = frontmatter + "\n" + body;
-  const currentTitle = extractTitle(frontmatter);
+  // 편집 모드: 기존 게시글 로딩 중
+  if (isEditMode && isLoadingPost) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">게시글 불러오는 중...</p>
+      </div>
+    );
+  }
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(fullContent);
-      toast.success("클립보드에 복사되었습니다");
-    } catch {
-      toast.error("복사에 실패했습니다");
-    }
-  };
+  // 편집 모드: 게시글 로딩 실패
+  if (isEditMode && isPostError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <p className="text-destructive">게시글을 불러오지 못했습니다.</p>
+        <Button variant="outline" onClick={() => navigate({ to: "/posts" })}>
+          게시글 목록으로
+        </Button>
+      </div>
+    );
+  }
 
-  if (isCreatingTemplate && !template) {
+  // 새 글 작성 모드: 템플릿 생성 중
+  if (!isEditMode && isCreatingTemplate && !activePostId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -257,7 +219,8 @@ function WritePage() {
     );
   }
 
-  if (createTemplateError && !template) {
+  // 새 글 작성 모드: 템플릿 생성 실패
+  if (!isEditMode && createTemplateError && !activePostId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-destructive">{createTemplateError}</p>
@@ -265,7 +228,7 @@ function WritePage() {
           variant="outline"
           onClick={() => {
             hasInitialized.current = false;
-            setTemplate(null);
+            setActivePostId(null);
             setCreateTemplateError(null);
             setRetrySeed((prev) => prev + 1);
           }}
@@ -276,39 +239,39 @@ function WritePage() {
     );
   }
 
+  const fullContent = frontmatter + "\n" + body;
+  const meta = parseFrontmatter(frontmatter);
+  const currentTitle = meta.title || "제목 없음";
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullContent);
+      toast.success("클립보드에 복사되었습니다");
+    } catch {
+      toast.error("복사에 실패했습니다");
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex items-center justify-between border-b px-4 py-2.5">
         <div className="flex items-center gap-3 min-w-0">
           <FileText className="size-5 shrink-0 text-primary" />
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            {currentTitle === "제목 없음" ? "새 글 작성" : currentTitle}
+            {isEditMode ? "글 수정" : currentTitle === "제목 없음" ? "새 글 작성" : currentTitle}
           </h1>
-          {template && (
+          {activePostId && (
             <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-              #{template.post_id}
+              #{activePostId}
             </Badge>
           )}
-          {saveState === "saving" && (
-            <span className="shrink-0 text-[11px] text-muted-foreground animate-pulse">저장 중...</span>
-          )}
-          {saveState === "saved" && (
-            <span className="shrink-0 flex items-center gap-0.5 text-[11px] text-emerald-600">
-              <Check className="size-3" />
-              저장됨
-            </span>
+          {isEditMode && (
+            <Badge variant="outline" className="shrink-0 text-[10px]">
+              편집
+            </Badge>
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" onClick={handleManualSave}>
-                <Save className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>임시저장 (수동)</TooltipContent>
-          </Tooltip>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -345,11 +308,11 @@ function WritePage() {
           <Button
             size="sm"
             onClick={handlePublish}
-            disabled={savePostContent.isPending || !template}
+            disabled={savePostContent.isPending || !activePostId}
             className="gap-1.5"
           >
             {savePostContent.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-            발행
+            {isEditMode ? "저장" : "발행"}
           </Button>
         </div>
       </div>
@@ -363,7 +326,7 @@ function WritePage() {
               </div>
               <Textarea
                 value={frontmatter}
-                onChange={(e) => handleFrontmatterChange(e.target.value)}
+                onChange={(e) => setFrontmatter(e.target.value)}
                 className="rounded-none border-0 border-t font-mono text-sm shadow-none focus-visible:ring-0 min-h-[120px] resize-none"
                 placeholder="---&#10;title: ''&#10;---"
               />
@@ -379,7 +342,7 @@ function WritePage() {
               <Textarea
                 ref={bodyRef}
                 value={body}
-                onChange={(e) => handleBodyChange(e.target.value)}
+                onChange={(e) => setBody(e.target.value)}
                 onDrop={handleBodyDrop}
                 className="flex-1 rounded-none border-0 font-mono text-sm shadow-none focus-visible:ring-0 min-h-[300px] resize-none"
                 placeholder="여기에 MDX 본문을 작성하세요..."
@@ -411,7 +374,7 @@ function WritePage() {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden p-3">
-                <ImagePanel postId={template?.post_id ?? null} onInsert={handleInsertImage} />
+                <ImagePanel postId={activePostId} onInsert={handleInsertImage} />
               </div>
             </div>
           </>
