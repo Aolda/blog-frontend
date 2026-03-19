@@ -1,4 +1,4 @@
-import { User, PenSquare, ImageIcon, UserCircle, Newspaper } from "lucide-react";
+import { User, PenSquare, UserCircle, Newspaper } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,7 @@ function LandingPage() {
         <p className="text-lg text-muted-foreground">
           블로그 관리 대시보드에 오신 것을 환영합니다.
           <br />
-          로그인하여 글을 작성하고 이미지를 관리하세요.
+          로그인하여 글을 작성하고 게시글을 관리하세요.
         </p>
         <Button asChild size="lg">
           <Link to="/login">
@@ -57,13 +57,6 @@ const actions = [
     icon: Newspaper,
     to: "/posts" as const,
   },
-
-  {
-    title: "이미지 관리",
-    description: "이미지를 업로드하고 마크다운 링크를 복사합니다.",
-    icon: ImageIcon,
-    to: "/images" as const,
-  },
   {
     title: "프로필 수정",
     description: "이름, 소개, 프로필 사진을 수정합니다.",
@@ -80,7 +73,7 @@ function Dashboard({ userName }: { userName: string }) {
         <p className="mt-1 text-muted-foreground">오늘은 무엇을 하시겠어요?</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {actions.map(({ title, description, icon: Icon, to }) => (
           <Link key={to} to={to} className="group">
             <Card className="h-full transition-colors group-hover:border-primary/40">
