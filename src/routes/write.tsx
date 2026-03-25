@@ -10,8 +10,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, X } from "lucide-react";
+import {
+  Copy,
+  Loader2,
+  ImageIcon,
+  PanelRightClose,
+  Eye,
+  Save,
+  X,
+  PenLine,
+  Tag,
+  ImagePlus,
+  Type,
+  AlignLeft,
+} from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
 
 interface WriteSearch {
@@ -85,7 +99,6 @@ function WritePage() {
   const templateRequestSeq = useRef(0);
 
   const [activePostId, setActivePostId] = useState<number | null>(editPostId ?? null);
-  // 메타데이터 상태 (분리된 필드)
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -93,8 +106,8 @@ function WritePage() {
   const [image, setImage] = useState("");
   const [body, setBody] = useState("");
   const [frontmatterContext, setFrontmatterContext] = useState<FrontmatterContext | null>(null);
-  const [showImages, setShowImages] = useState(true);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showImages, setShowImages] = useState(false);
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
   const [retrySeed, setRetrySeed] = useState(0);
@@ -109,14 +122,12 @@ function WritePage() {
   const savePostContent = useSavePostContent();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  // 인증 확인
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate({ to: "/login" });
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  // 편집 모드: 서버에서 기존 게시글 로드
   useEffect(() => {
     if (!isEditMode || !existingPost || hasInitialized.current) return;
     hasInitialized.current = true;
@@ -133,7 +144,6 @@ function WritePage() {
     });
   }, [isEditMode, existingPost]);
 
-  // 새 글 작성 모드: 템플릿 생성
   useEffect(() => {
     if (isEditMode) return;
     if (!isAuthenticated || hasInitialized.current) return;
@@ -153,7 +163,6 @@ function WritePage() {
         });
         if (!isActive || requestSeq !== templateRequestSeq.current) return;
         setActivePostId(data.post_id);
-        // 메타데이터는 빈 값으로 초기화
         setTitle("");
         setDescription("");
         setTags([]);
@@ -214,15 +223,23 @@ function WritePage() {
     );
   };
 
-  // 태그 삭제
   const removeTag = useCallback((tagToRemove: string) => {
     setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   }, []);
 
-  // 태그 입력 키 핸들러
   const handleTagKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        const trimmed = tagInput.trim();
+        if (trimmed && !tags.includes(trimmed)) {
+          setTags((prev) => [...prev, trimmed]);
+          setTagInput("");
+        } else if (trimmed && tags.includes(trimmed)) {
+          toast.error("이미 존재하는 태그입니다");
+          setTagInput("");
+        }
+      } else if (e.key === "Backspace" && !tagInput && tags.length > 0) {
         removeTag(tags[tags.length - 1]);
       }
     },
@@ -270,45 +287,42 @@ function WritePage() {
     return null;
   }
 
-  // 편집 모드: 기존 게시글 로딩 중
   if (isEditMode && isLoadingPost) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">게시글 불러오는 중...</p>
+        <p className="text-sm text-muted-foreground">게시글 불러오는 중...</p>
       </div>
     );
   }
 
-  // 편집 모드: 게시글 로딩 실패
   if (isEditMode && isPostError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-destructive">게시글을 불러오지 못했습니다.</p>
-        <Button variant="outline" onClick={() => navigate({ to: "/posts" })}>
+        <p className="text-sm text-destructive">게시글을 불러오지 못했습니다.</p>
+        <Button variant="outline" size="sm" onClick={() => navigate({ to: "/posts" })}>
           게시글 목록으로
         </Button>
       </div>
     );
   }
 
-  // 새 글 작성 모드: 템플릿 생성 중
   if (!isEditMode && isCreatingTemplate && !activePostId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">템플릿 생성 중...</p>
+        <p className="text-sm text-muted-foreground">템플릿 생성 중...</p>
       </div>
     );
   }
 
-  // 새 글 작성 모드: 템플릿 생성 실패
   if (!isEditMode && createTemplateError && !activePostId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-destructive">{createTemplateError}</p>
+        <p className="text-sm text-destructive">{createTemplateError}</p>
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             hasInitialized.current = false;
             setActivePostId(null);
@@ -335,213 +349,231 @@ function WritePage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-2.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <FileText className="size-5 shrink-0 text-primary" />
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            {isEditMode ? "글 수정" : currentTitle === "제목 없음" ? "새 글 작성" : currentTitle}
-          </h1>
-          {activePostId && (
-            <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-              #{activePostId}
-            </Badge>
-          )}
-          {isEditMode && (
-            <Badge variant="outline" className="shrink-0 text-[10px]">
-              편집
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={showPreview ? "secondary" : "ghost"}
-                size="icon-sm"
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                {showPreview ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{showPreview ? "미리보기 숨기기" : "미리보기"}</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={showImages ? "secondary" : "ghost"}
-                size="icon-sm"
-                onClick={() => setShowImages(!showImages)}
-              >
-                {showImages ? <PanelRightClose className="size-4" /> : <ImageIcon className="size-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{showImages ? "이미지 패널 닫기" : "이미지 패널 열기"}</TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="mx-1 h-5" />
-
-          <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
-            <Copy className="size-3.5" />
-            복사
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={savePostContent.isPending || !activePostId}
-            className="gap-1.5"
-          >
-            {savePostContent.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-            저장하기
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        <div className={`flex flex-1 flex-col overflow-hidden ${showPreview ? "lg:flex-row" : ""}`}>
-          <div className={`flex flex-col overflow-y-auto ${showPreview ? "lg:w-1/2 lg:border-r" : ""}`}>
-            {/* 메타데이터 폼 */}
-            <div className="border-b">
-              <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">메타데이터</span>
-              </div>
-              <div className="p-4 space-y-4">
-                {/* 제목 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">제목</label>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="게시글 제목"
-                    className="text-sm"
-                  />
-                </div>
-
-                {/* 설명 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">설명</label>
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="게시글 설명 (선택)"
-                    className="text-sm min-h-[60px] resize-none"
-                  />
-                </div>
-
-                {/* 태그 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">태그</label>
-                  <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border rounded-md bg-background min-h-9">
-                    {tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="ml-1 hover:text-destructive transition-colors"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    <input
-                      value={tagInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value.includes(" ")) {
-                          const trimmed = value.trim();
-                          if (trimmed && !tags.includes(trimmed)) {
-                            setTags((prev) => [...prev, trimmed]);
-                          } else if (trimmed && tags.includes(trimmed)) {
-                            toast.error("이미 존재하는 태그입니다");
-                          }
-                          setTagInput("");
-                        } else {
-                          setTagInput(value);
-                        }
-                      }}
-                      onKeyDown={handleTagKeyDown}
-                      placeholder={tags.length > 0 ? "" : "태그 입력 후 Space"}
-                      className="flex-1 min-w-[120px] text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-                    />
-                  </div>
-                </div>
-
-                {/* 커버 이미지 */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">커버 이미지 URL</label>
-                  <Input
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    placeholder="이미지 URL (선택)"
-                    className="text-sm"
-                  />
-                  {image && (
-                    <div className="mt-2 rounded-md overflow-hidden border">
-                      <img
-                        src={image}
-                        alt="커버 이미지 미리보기"
-                        className="w-full h-32 object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col items-center">
+      <div className="flex flex-col w-full max-w-5xl h-full border-x">
+        {/* 상단 헤더 */}
+        <header className="flex items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-5 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-center size-8 rounded-md bg-primary/10">
+              <PenLine className="size-4 text-primary" />
             </div>
-
-            {/* 본문 */}
-            <div className="flex flex-1 flex-col">
-              <div className="flex items-center gap-2 px-4 py-2 border-b">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">본문 (MDX)</span>
-                <span className="ml-auto text-[10px] text-muted-foreground/60">
-                  이미지를 클릭하면 커서 위치에 삽입됩니다
-                </span>
+            <div className="flex flex-col min-w-0">
+              <h1 className="truncate text-sm font-semibold leading-tight">
+                {isEditMode ? "글 수정" : currentTitle === "제목 없음" ? "새 글 작성" : currentTitle}
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                {activePostId && <span className="text-[11px] text-muted-foreground font-mono">#{activePostId}</span>}
+                {isEditMode && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    편집 중
+                  </Badge>
+                )}
               </div>
-              <Textarea
-                ref={bodyRef}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                onDrop={handleBodyDrop}
-                className="flex-1 rounded-none border-0 font-mono text-sm shadow-none focus-visible:ring-0 min-h-[300px] resize-none"
-                placeholder="여기에 MDX 본문을 작성하세요..."
-              />
             </div>
           </div>
 
-          {showPreview && (
-            <div className="hidden lg:flex lg:w-1/2 flex-col overflow-y-auto bg-muted/30">
-              <div className="px-4 py-2 border-b">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">미리보기</span>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={() => setShowImages(!showImages)}>
+                  {showImages ? <PanelRightClose className="size-4" /> : <ImageIcon className="size-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{showImages ? "이미지 패널 닫기" : "이미지 패널"}</TooltipContent>
+            </Tooltip>
+
+            <Separator orientation="vertical" className="h-5" />
+
+            <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
+              <Copy className="size-3.5" />
+              <span className="hidden sm:inline">복사</span>
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={savePostContent.isPending || !activePostId}
+              className="gap-1.5"
+            >
+              {savePostContent.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Save className="size-3.5" />
+              )}
+              저장
+            </Button>
+          </div>
+        </header>
+
+        {/* 메인 콘텐츠 */}
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* 메타데이터 섹션 */}
+            <div className="border-b bg-muted/20">
+              <div className="px-5 py-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 왼쪽: 제목 + 설명 */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Type className="size-3" />
+                      제목
+                    </label>
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="게시글 제목을 입력하세요"
+                      className="text-sm h-8 bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <AlignLeft className="size-3" />
+                      설명
+                    </label>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="게시글에 대한 간략한 설명 (선택)"
+                      className="text-sm min-h-[52px] resize-none bg-background"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Tag className="size-3" />
+                      태그
+                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 border rounded-md bg-background min-h-8">
+                      {tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="gap-0.5 pr-0.5 text-[11px]">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-0.5 p-0.5 rounded-sm hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          >
+                            <X className="size-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                      <input
+                        value={tagInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.includes(" ") || value.includes(",")) {
+                            const trimmed = value.replace(/[,\s]/g, "").trim();
+                            if (trimmed && !tags.includes(trimmed)) {
+                              setTags((prev) => [...prev, trimmed]);
+                            } else if (trimmed && tags.includes(trimmed)) {
+                              toast.error("이미 존재하는 태그입니다");
+                            }
+                            setTagInput("");
+                          } else {
+                            setTagInput(value);
+                          }
+                        }}
+                        onKeyDown={handleTagKeyDown}
+                        placeholder={tags.length > 0 ? "" : "태그 입력 (Enter 또는 쉼표)"}
+                        className="flex-1 min-w-[100px] text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 오른쪽: 커버 이미지 */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <ImagePlus className="size-3" />
+                      커버 이미지
+                    </label>
+                    <Input
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="이미지 URL (선택)"
+                      className="text-sm h-8 bg-background"
+                    />
+                    {image && (
+                      <div className="mt-1 rounded-md overflow-hidden border bg-muted">
+                        <img
+                          src={image}
+                          alt="커버 이미지 미리보기"
+                          className="w-full h-40 object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <pre className="flex-1 p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto">
-                {fullContent.trim() || "(내용이 비어 있습니다)"}
-              </pre>
             </div>
+
+            {/* 에디터/미리보기 탭 */}
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "edit" | "preview")}
+              className="flex-1 flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b px-4 py-1.5">
+                <TabsList variant="line" className="h-8 bg-transparent p-0">
+                  <TabsTrigger value="edit" className="text-xs px-3 py-1.5 gap-1.5">
+                    <PenLine className="size-3" />
+                    편집
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="text-xs px-3 py-1.5 gap-1.5">
+                    <Eye className="size-3" />
+                    미리보기
+                  </TabsTrigger>
+                </TabsList>
+                <span className="text-[10px] text-muted-foreground/50">
+                  {body.length > 0 ? `${body.length.toLocaleString()}자` : ""}
+                </span>
+              </div>
+
+              <TabsContent value="edit" className="flex-1 m-0">
+                <Textarea
+                  ref={bodyRef}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  onDrop={handleBodyDrop}
+                  className="flex-1 h-full rounded-none border-0 font-mono text-[13px] leading-relaxed shadow-none focus-visible:ring-0 resize-none p-5"
+                  placeholder="여기에 MDX 본문을 작성하세요..."
+                />
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 m-0 overflow-y-auto">
+                <div className="p-5">
+                  <pre className="font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words text-foreground/90">
+                    {fullContent.trim() || <span className="text-muted-foreground italic">내용이 비어 있습니다</span>}
+                  </pre>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* 이미지 패널 */}
+          {showImages && (
+            <>
+              <Separator orientation="vertical" />
+              <aside className="hidden md:flex w-72 xl:w-80 flex-col border-l bg-muted/10">
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="size-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">이미지</span>
+                  </div>
+                  <Button variant="ghost" size="icon-xs" onClick={() => setShowImages(false)}>
+                    <PanelRightClose className="size-3" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-hidden p-3">
+                  <ImagePanel postId={activePostId} onInsert={handleInsertImage} />
+                </div>
+              </aside>
+            </>
           )}
         </div>
-
-        {showImages && (
-          <>
-            <Separator orientation="vertical" />
-            <div className="hidden w-72 flex-col md:flex xl:w-80">
-              <div className="flex items-center gap-2 border-b px-3 py-2">
-                <ImageIcon className="size-4 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">이미지</span>
-                <Button variant="ghost" size="icon-xs" className="ml-auto" onClick={() => setShowImages(false)}>
-                  <PanelRightClose className="size-3.5" />
-                </Button>
-              </div>
-              <div className="flex-1 overflow-hidden p-3">
-                <ImagePanel postId={activePostId} onInsert={handleInsertImage} />
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
