@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, X, Plus } from "lucide-react";
+import { Copy, FileText, Loader2, ImageIcon, PanelRightClose, Eye, EyeOff, Save, X } from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
 
 interface WriteSearch {
@@ -214,18 +214,6 @@ function WritePage() {
     );
   };
 
-  // 태그 추가
-  const addTag = useCallback(() => {
-    const trimmed = tagInput.trim();
-    if (!trimmed) return;
-    if (tags.includes(trimmed)) {
-      toast.error("이미 존재하는 태그입니다");
-      return;
-    }
-    setTags((prev) => [...prev, trimmed]);
-    setTagInput("");
-  }, [tagInput, tags]);
-
   // 태그 삭제
   const removeTag = useCallback((tagToRemove: string) => {
     setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
@@ -234,12 +222,11 @@ function WritePage() {
   // 태그 입력 키 핸들러
   const handleTagKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        addTag();
+      if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+        removeTag(tags[tags.length - 1]);
       }
     },
-    [addTag],
+    [tagInput, tags, removeTag],
   );
 
   const handleInsertImage = useCallback((markdown: string) => {
@@ -446,34 +433,40 @@ function WritePage() {
                 {/* 태그 */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">태그</label>
-                  <div className="flex gap-2">
-                    <Input
+                  <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border rounded-md bg-background min-h-9">
+                    {tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="ml-1 hover:text-destructive transition-colors"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                    <input
                       value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.includes(" ")) {
+                          const trimmed = value.trim();
+                          if (trimmed && !tags.includes(trimmed)) {
+                            setTags((prev) => [...prev, trimmed]);
+                          } else if (trimmed && tags.includes(trimmed)) {
+                            toast.error("이미 존재하는 태그입니다");
+                          }
+                          setTagInput("");
+                        } else {
+                          setTagInput(value);
+                        }
+                      }}
                       onKeyDown={handleTagKeyDown}
-                      placeholder="태그 입력 후 Enter"
-                      className="text-sm flex-1"
+                      placeholder={tags.length > 0 ? "" : "태그 입력 후 Space"}
+                      className="flex-1 min-w-[120px] text-sm bg-transparent outline-none placeholder:text-muted-foreground"
                     />
-                    <Button variant="outline" size="sm" onClick={addTag} disabled={!tagInput.trim()}>
-                      <Plus className="size-4" />
-                    </Button>
                   </div>
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-1 hover:text-destructive transition-colors"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* 커버 이미지 */}
