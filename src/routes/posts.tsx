@@ -2,11 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
 import { usePosts } from "@/lib/queries";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Plus, Clock, Eye, ChevronLeft, ChevronRight, Loader2, PenSquare, Tag } from "lucide-react";
+import { FileText, Plus, Clock, Eye, ChevronLeft, ChevronRight, Loader2, PenSquare } from "lucide-react";
 
 interface PostsSearch {
   page?: number;
@@ -39,15 +39,20 @@ function PostsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <FileText className="size-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">게시글</h1>
+          <div className="flex items-center justify-center size-10 rounded-lg bg-primary/10">
+            <FileText className="size-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">게시글</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">블로그 게시글을 관리합니다</p>
+          </div>
         </div>
-        <Button size="sm" asChild>
+        <Button asChild>
           <Link to="/write">
-            <Plus className="size-4" />새 글 작성
+            <Plus className="size-4" /> 새 글 작성
           </Link>
         </Button>
       </div>
@@ -55,26 +60,36 @@ function PostsPage() {
       <Separator />
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-24">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">게시글을 불러오는 중...</p>
+          </div>
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-destructive">게시글을 불러오는 데 실패했습니다</p>
-          <Button variant="outline" className="mt-4" onClick={() => navigate({ to: "/posts", search: { page } })}>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="size-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <FileText className="size-8 text-destructive" />
+          </div>
+          <p className="text-destructive font-medium">게시글을 불러오는 데 실패했습니다</p>
+          <p className="text-sm text-muted-foreground mt-1">네트워크 연결을 확인해주세요</p>
+          <Button variant="outline" className="mt-6" onClick={() => navigate({ to: "/posts", search: { page } })}>
             다시 시도
           </Button>
         </div>
       ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <FileText className="size-12 text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground">게시글이 없습니다</p>
-          <Button variant="outline" className="mt-4" asChild>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <FileText className="size-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-muted-foreground font-medium">게시글이 없습니다</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">첫 번째 게시글을 작성해보세요</p>
+          <Button variant="outline" className="mt-6" asChild>
             <Link to="/write">새 글 작성하기</Link>
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-4">
           {posts.map((post) => {
             const title = post.title ?? "제목 없음";
             const description = post.description ?? "";
@@ -82,49 +97,68 @@ function PostsPage() {
             const date = post.frontmatter?.date || post.created_at.split("T")[0];
 
             return (
-              <Card key={post.id} className="group transition-colors hover:border-primary/30">
-                <CardContent className="flex items-start gap-4 py-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Link to="/write" search={{ postId: post.id }} className="font-medium truncate hover:underline">
-                        {title}
-                      </Link>
-                      <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
-                        #{post.id}
-                      </Badge>
-                    </div>
-
-                    {description && <p className="text-sm text-muted-foreground line-clamp-2 mb-1.5">{description}</p>}
-
-                    {tags.length > 0 && (
-                      <div className="flex items-center gap-1 flex-wrap mb-1.5">
-                        <Tag className="size-3 text-muted-foreground/60" />
-                        {tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {tag}
-                          </Badge>
-                        ))}
+              <Card
+                key={post.id}
+                className="group relative transition-all duration-200 hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <CardTitle className="text-base leading-tight">
+                          <Link
+                            to="/write"
+                            search={{ postId: post.id }}
+                            className="hover:text-primary transition-colors line-clamp-1"
+                          >
+                            {title}
+                          </Link>
+                        </CardTitle>
+                        <Badge variant="outline" className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                          #{post.id}
+                        </Badge>
                       </div>
-                    )}
-
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground/70">
-                      <span className="flex items-center gap-1">
-                        <Clock className="size-3" />
-                        {date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="size-3" />
-                        {post.views}
-                      </span>
+                      {description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1.5 leading-relaxed">
+                          {description}
+                        </p>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="ghost" size="icon-sm" asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      asChild
+                    >
                       <Link to="/write" search={{ postId: post.id }}>
                         <PenSquare className="size-4" />
                       </Link>
                     </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center justify-between">
+                    {tags.length > 0 ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-[11px] px-2 py-0.5 font-normal">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="size-3.5" />
+                        {date}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Eye className="size-3.5" />
+                        {post.views.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -133,24 +167,29 @@ function PostsPage() {
         </div>
       )}
 
-      {/* Pagination */}
       {posts.length > 0 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
+        <div className="flex items-center justify-center gap-3 pt-4">
           <Button
             variant="outline"
             size="sm"
             disabled={page <= 1}
             onClick={() => navigate({ to: "/posts", search: { page: page - 1 } })}
+            className="gap-1.5"
           >
             <ChevronLeft className="size-4" />
             이전
           </Button>
-          <span className="text-sm text-muted-foreground px-3">{page} 페이지</span>
+          <div className="flex items-center gap-2 px-4">
+            <span className="text-sm font-medium text-foreground">{page}</span>
+            <span className="text-sm text-muted-foreground">/</span>
+            <span className="text-sm text-muted-foreground">페이지</span>
+          </div>
           <Button
             variant="outline"
             size="sm"
             disabled={posts.length < PAGE_SIZE}
             onClick={() => navigate({ to: "/posts", search: { page: page + 1 } })}
+            className="gap-1.5"
           >
             다음
             <ChevronRight className="size-4" />

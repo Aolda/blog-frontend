@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PenSquare, User, LogOut, Settings, Newspaper } from "lucide-react";
+import { PenSquare, User, LogOut, Settings, FileText } from "lucide-react";
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -33,7 +33,7 @@ export default function Header() {
               </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/posts">
-                  <Newspaper className="size-4" />
+                  <FileText className="size-4" />
                   게시글
                 </Link>
               </Button>
