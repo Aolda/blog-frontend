@@ -59,7 +59,7 @@ export default function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <Avatar size="sm">
-                    {user.profile && <AvatarImage src={user.profile} alt={user.username} />}
+                    {user.avatar && <AvatarImage src={user.avatar} alt={user.username} />}
                     <AvatarFallback>{(user.name ?? user.username).charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium md:inline-block">{user.name ?? user.username}</span>
