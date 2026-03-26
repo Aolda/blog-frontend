@@ -4,8 +4,14 @@ export interface User {
   email: string;
   name: string | null;
   bio: string | null;
-  profile: string | null;
+  avatar: string | null;
   role: "writer" | "admin";
+  website: string | null;
+  github: string | null;
+  gitlab: string | null;
+  linkedin: string | null;
+  discord: string | null;
+  mail: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -105,7 +111,13 @@ export interface GoogleFinishResponse {
 export interface UpdateProfileRequest {
   name?: string | null;
   bio?: string | null;
-  profile?: string | null;
+  avatar?: string | null;
+  website?: string | null;
+  github?: string | null;
+  gitlab?: string | null;
+  linkedin?: string | null;
+  discord?: string | null;
+  mail?: string | null;
 }
 
 export interface ApiError {
