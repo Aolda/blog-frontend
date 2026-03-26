@@ -3,7 +3,6 @@ import api from "@/lib/api";
 import type {
   User,
   Token,
-  PostTemplate,
   PostResponse,
   PostSummaryResponse,
   ImageUploadResponse,
@@ -14,6 +13,7 @@ import type {
   GoogleFinishRequest,
   GoogleFinishResponse,
   UpdateProfileRequest,
+  AuthorResponse,
 } from "@/types";
 
 export function useMe() {
@@ -32,6 +32,18 @@ export function useUsers(page = 1, limit = 10) {
     queryFn: async () => {
       const { data } = await api.get<User[]>("/users/", {
         params: { page, limit },
+      });
+      return data;
+    },
+  });
+}
+
+export function useAuthors(skip = 0, limit = 100) {
+  return useQuery<AuthorResponse[]>({
+    queryKey: ["authors", skip, limit],
+    queryFn: async () => {
+      const { data } = await api.get<AuthorResponse[]>("/users/authors", {
+        params: { skip, limit },
       });
       return data;
     },

@@ -1,4 +1,4 @@
-import { User, PenSquare, UserCircle, Newspaper } from "lucide-react";
+import { User, PenSquare, UserCircle, Newspaper, Users } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +56,12 @@ const actions = [
     description: "발행된 게시글을 확인하고 수정합니다.",
     icon: Newspaper,
     to: "/posts" as const,
+  },
+  {
+    title: "구성원 목록",
+    description: "블로그 구성원을 확인하고 관리합니다.",
+    icon: Users,
+    to: "/members" as const,
   },
   {
     title: "프로필 수정",

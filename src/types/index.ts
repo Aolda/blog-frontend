@@ -123,3 +123,17 @@ export interface UpdateProfileRequest {
 export interface ApiError {
   detail: string | Array<{ type: string; loc: string[]; msg: string; input: any }>;
 }
+
+export interface AuthorResponse {
+  id: string;
+  username: string;
+  name: string;
+  bio: string;
+  avatar: string;
+  website: string | null;
+  github: string | null;
+  gitlab: string | null;
+  linkedin: string | null;
+  discord: string | null;
+  mail: string | null;
+}

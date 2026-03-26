@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WriteRouteImport } from './routes/write'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as MembersRouteImport } from './routes/members'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegisterGoogleRouteImport } from './routes/register/google'
@@ -30,6 +31,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MembersRoute = MembersRouteImport.update({
+  id: '/members',
+  path: '/members',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -56,6 +62,7 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/members': typeof MembersRoute
   '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/members': typeof MembersRoute
   '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/members': typeof MembersRoute
   '/posts': typeof PostsRoute
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/members'
     | '/posts'
     | '/profile'
     | '/write'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/members'
     | '/posts'
     | '/profile'
     | '/write'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/members'
     | '/posts'
     | '/profile'
     | '/write'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  MembersRoute: typeof MembersRoute
   PostsRoute: typeof PostsRoute
   ProfileRoute: typeof ProfileRoute
   WriteRoute: typeof WriteRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/members': {
+      id: '/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof MembersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  MembersRoute: MembersRoute,
   PostsRoute: PostsRoute,
   ProfileRoute: ProfileRoute,
   WriteRoute: WriteRoute,
