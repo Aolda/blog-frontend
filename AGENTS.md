@@ -2,7 +2,7 @@
 
 ## Commands
 
-- `pnpm dev` - 개발 서버 실행 (포트 1234)
+- `pnpm dev` - 개발 서버 실행 (https://abs.localhost)
 - `pnpm build` - 프로덕션 빌드
 - `pnpm preview` - 빌드 미리보기
 - `pnpm test` - 테스트 실행 (vitest)
