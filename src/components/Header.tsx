@@ -49,7 +49,7 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           {isAuthenticated && user ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <Avatar size="sm">
