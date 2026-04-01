@@ -85,18 +85,6 @@ export interface ViewsResponse {
   views: number;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  name?: string | null;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
 export interface UpdateProfileRequest {
   name?: string | null;
   bio?: string | null;

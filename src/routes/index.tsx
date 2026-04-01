@@ -32,7 +32,7 @@ function LandingPage() {
         <p className="text-lg text-muted-foreground">
           블로그 관리 대시보드에 오신 것을 환영합니다.
           <br />
-          로그인하여 글을 작성하고 게시글을 관리하세요.
+          아올다 통합 계정으로 로그인하여 글을 작성하고 게시글을 관리하세요.
         </p>
         <Button asChild size="lg">
           <Link to="/login">

@@ -8,8 +8,6 @@ import type {
   ImageUploadResponse,
   ImageResponse,
   PostContentUpdateRequest,
-  LoginRequest,
-  RegisterRequest,
   UpdateProfileRequest,
   AuthorResponse,
 } from "@/types";
@@ -166,24 +164,6 @@ export function useSavePostContent() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["post", variables.postId] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
-    },
-  });
-}
-
-export function useLogin() {
-  return useMutation<Token, Error, LoginRequest>({
-    mutationFn: async (body) => {
-      const { data } = await api.post<Token>("/auth/login", body);
-      return data;
-    },
-  });
-}
-
-export function useRegister() {
-  return useMutation<User, Error, RegisterRequest>({
-    mutationFn: async (body) => {
-      const { data } = await api.post<User>("/auth/register", body);
-      return data;
     },
   });
 }
