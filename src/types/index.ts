@@ -1,5 +1,6 @@
 export interface User {
   id: number;
+  keycloak_sub: string | null;
   username: string;
   email: string;
   name: string | null;
@@ -94,18 +95,6 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
-}
-
-export interface GoogleFinishRequest {
-  username: string;
-  register_token: string;
-}
-
-export interface GoogleFinishResponse {
-  access_token: string;
-  refresh_token: string;
-  username: string;
-  message: string;
 }
 
 export interface UpdateProfileRequest {

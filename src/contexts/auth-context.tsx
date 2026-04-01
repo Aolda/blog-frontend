@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (accessToken: string, refreshToken: string) => Promise<void>;
+  login: (accessToken: string, refreshToken: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -22,16 +22,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.get<User>("/users/me");
       setUser(data);
+      return data;
     } catch {
       setUser(null);
       clearTokens();
+      throw new Error("사용자 정보를 불러오지 못했습니다.");
     }
   };
 
   useEffect(() => {
     const token = getAccessToken();
     if (token) {
-      fetchUser().finally(() => setIsLoading(false));
+      fetchUser()
+        .catch(() => undefined)
+        .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
@@ -40,8 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (accessToken: string, refreshToken: string) => {
     setTokens(accessToken, refreshToken);
     setIsLoading(true);
-    await fetchUser();
-    setIsLoading(false);
+    try {
+      return await fetchUser();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {

@@ -10,8 +10,6 @@ import type {
   PostContentUpdateRequest,
   LoginRequest,
   RegisterRequest,
-  GoogleFinishRequest,
-  GoogleFinishResponse,
   UpdateProfileRequest,
   AuthorResponse,
 } from "@/types";
@@ -51,10 +49,10 @@ export function useAuthors(skip = 0, limit = 100) {
 }
 
 export function useUser(username: string) {
-  return useQuery<User>({
+  return useQuery<AuthorResponse>({
     queryKey: ["user", username],
     queryFn: async () => {
-      const { data } = await api.get<User>(`/users/${username}`);
+      const { data } = await api.get<AuthorResponse>(`/users/${username}`);
       return data;
     },
     enabled: !!username,
@@ -185,15 +183,6 @@ export function useRegister() {
   return useMutation<User, Error, RegisterRequest>({
     mutationFn: async (body) => {
       const { data } = await api.post<User>("/auth/register", body);
-      return data;
-    },
-  });
-}
-
-export function useGoogleFinish() {
-  return useMutation<GoogleFinishResponse, Error, GoogleFinishRequest>({
-    mutationFn: async (body) => {
-      const { data } = await api.post<GoogleFinishResponse>("/auth/google/finish", body);
       return data;
     },
   });

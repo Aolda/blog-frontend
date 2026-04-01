@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { useLogin } from "@/lib/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,17 +20,26 @@ function LoginPage() {
   const [password, setPassword] = useState("");
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-  const serverBaseUrl = apiBaseUrl.replace(/\/api\/v1$/, "");
 
-  const handleGoogleLogin = () => {
-    window.location.href = `${serverBaseUrl}/api/v1/auth/google/login`;
+  const handleAoldaLogin = () => {
+    const loginUrl = new URL(`${apiBaseUrl}/auth/login`);
+    loginUrl.searchParams.set("console_page_url", window.location.origin);
+    window.location.href = loginUrl.toString();
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = await loginMutation.mutateAsync({ email, password });
-    await auth.login(data.access_token, data.refresh_token);
-    navigate({ to: "/" });
+    try {
+      const data = await loginMutation.mutateAsync({ email, password });
+      try {
+        await auth.login(data.access_token, data.refresh_token);
+        navigate({ to: "/" });
+      } catch {
+        toast.error("로그인 처리에 실패했습니다. 다시 시도해주세요.");
+      }
+    } catch {
+      // Mutation state is rendered inline below for credential errors.
+    }
   };
 
   return (
@@ -40,8 +50,9 @@ function LoginPage() {
           <CardDescription>아올다 블로그 콘솔에 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Button variant="outline" className="w-full" size="lg" onClick={handleGoogleLogin}>
-            Google 계정으로 로그인
+          <Button variant="outline" className="w-full gap-2.5" size="lg" onClick={handleAoldaLogin}>
+            <img src="/aolda.svg" alt="" className="size-4 shrink-0" aria-hidden="true" />
+            <span>아올다 계정으로 로그인</span>
           </Button>
 
           <div className="relative">

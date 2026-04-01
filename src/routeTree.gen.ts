@@ -15,7 +15,6 @@ import { Route as PostsRouteImport } from './routes/posts'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RegisterGoogleRouteImport } from './routes/register/google'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
 const WriteRoute = WriteRouteImport.update({
@@ -48,11 +47,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RegisterGoogleRoute = RegisterGoogleRouteImport.update({
-  id: '/register/google',
-  path: '/register/google',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -67,7 +61,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/register/google': typeof RegisterGoogleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -77,7 +70,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/register/google': typeof RegisterGoogleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,7 +80,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/write': typeof WriteRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/register/google': typeof RegisterGoogleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,7 +91,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/write'
     | '/auth/callback'
-    | '/register/google'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -110,7 +100,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/write'
     | '/auth/callback'
-    | '/register/google'
   id:
     | '__root__'
     | '/'
@@ -120,7 +109,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/write'
     | '/auth/callback'
-    | '/register/google'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,7 +119,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   WriteRoute: typeof WriteRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
-  RegisterGoogleRoute: typeof RegisterGoogleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -178,13 +165,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/register/google': {
-      id: '/register/google'
-      path: '/register/google'
-      fullPath: '/register/google'
-      preLoaderRoute: typeof RegisterGoogleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -203,7 +183,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   WriteRoute: WriteRoute,
   AuthCallbackRoute: AuthCallbackRoute,
-  RegisterGoogleRoute: RegisterGoogleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
