@@ -4,7 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import api from "@/lib/api";
 import type { PostTemplate } from "@/types";
-import { usePost, useSavePostContent } from "@/lib/queries";
+import { usePost, useSavePostContent, useAuthors } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
   ImagePlus,
   Type,
   AlignLeft,
+  Users,
 } from "lucide-react";
 import ImagePanel from "@/components/ImagePanel";
 
@@ -92,7 +93,7 @@ export const Route = createFileRoute("/write")({
 });
 
 function WritePage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { postId: editPostId } = Route.useSearch();
   const navigate = useNavigate();
   const hasInitialized = useRef(false);
@@ -111,6 +112,9 @@ function WritePage() {
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
   const [retrySeed, setRetrySeed] = useState(0);
+  const [authorSearch, setAuthorSearch] = useState("");
+  const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false);
+  const authorSuggestionsRef = useRef<HTMLDivElement>(null);
 
   const isEditMode = editPostId !== undefined;
   const {
@@ -121,12 +125,23 @@ function WritePage() {
 
   const savePostContent = useSavePostContent();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const { data: allAuthors = [] } = useAuthors(0, 100);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate({ to: "/login" });
     }
   }, [authLoading, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (authorSuggestionsRef.current && !authorSuggestionsRef.current.contains(e.target as Node)) {
+        setShowAuthorSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!isEditMode || !existingPost || hasInitialized.current) return;
@@ -170,7 +185,7 @@ function WritePage() {
         setBody("");
         setFrontmatterContext({
           date: data.created_at,
-          author: [data.author_name],
+          author: data.author_names,
         });
       } catch (error) {
         if (!isActive || requestSeq !== templateRequestSeq.current) return;
@@ -210,6 +225,7 @@ function WritePage() {
         tags,
         image: image || null,
         content: body,
+        authors: frontmatterContext?.author,
       },
       {
         onSuccess: () => {
@@ -226,6 +242,32 @@ function WritePage() {
   const removeTag = useCallback((tagToRemove: string) => {
     setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   }, []);
+
+  const addAuthor = useCallback(
+    (username: string) => {
+      if (!frontmatterContext) return;
+      if (frontmatterContext.author.includes(username)) return;
+      setFrontmatterContext({
+        ...frontmatterContext,
+        author: [...frontmatterContext.author, username],
+      });
+      setAuthorSearch("");
+      setShowAuthorSuggestions(false);
+    },
+    [frontmatterContext],
+  );
+
+  const removeAuthor = useCallback(
+    (username: string) => {
+      if (!frontmatterContext) return;
+      if (user && username === user.username) return;
+      setFrontmatterContext({
+        ...frontmatterContext,
+        author: frontmatterContext.author.filter((a) => a !== username),
+      });
+    },
+    [frontmatterContext, user],
+  );
 
   const handleTagKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -480,8 +522,76 @@ function WritePage() {
                   </div>
                 </div>
 
-                {/* 오른쪽: 커버 이미지 */}
+                {/* 오른쪽: 커버 이미지 + 작성자 */}
                 <div className="space-y-3">
+                  <div className="space-y-1.5" ref={authorSuggestionsRef}>
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Users className="size-3" />
+                      작성자
+                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 border rounded-md bg-background min-h-8 relative">
+                      {frontmatterContext?.author.map((username) => {
+                        const isSelf = user?.username === username;
+                        return (
+                          <Badge key={username} variant="secondary" className="gap-0.5 text-[11px]">
+                            {username}
+                            {!isSelf && (
+                              <button
+                                type="button"
+                                onClick={() => removeAuthor(username)}
+                                className="ml-0.5 p-0.5 rounded-sm hover:bg-destructive/20 hover:text-destructive transition-colors"
+                              >
+                                <X className="size-2.5" />
+                              </button>
+                            )}
+                          </Badge>
+                        );
+                      })}
+                      <input
+                        value={authorSearch}
+                        onChange={(e) => {
+                          setAuthorSearch(e.target.value);
+                          setShowAuthorSuggestions(true);
+                        }}
+                        onFocus={() => setShowAuthorSuggestions(true)}
+                        placeholder={frontmatterContext && frontmatterContext.author.length > 0 ? "" : "작성자 검색..."}
+                        className="flex-1 min-w-25 text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
+                      />
+                      {showAuthorSuggestions && (
+                        <div className="absolute left-0 right-0 top-full mt-1 z-50 border rounded-md bg-popover shadow-md max-h-48 overflow-y-auto">
+                          {allAuthors.filter(
+                            (a) =>
+                              !frontmatterContext?.author.includes(a.username) &&
+                              (a.username.toLowerCase().includes(authorSearch.toLowerCase()) ||
+                                a.name.toLowerCase().includes(authorSearch.toLowerCase())),
+                          ).length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">검색 결과 없음</div>
+                          ) : (
+                            allAuthors
+                              .filter(
+                                (a) =>
+                                  !frontmatterContext?.author.includes(a.username) &&
+                                  (a.username.toLowerCase().includes(authorSearch.toLowerCase()) ||
+                                    a.name.toLowerCase().includes(authorSearch.toLowerCase())),
+                              )
+                              .map((author) => (
+                                <button
+                                  key={author.username}
+                                  type="button"
+                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                                  onClick={() => addAuthor(author.username)}
+                                >
+                                  <span className="font-medium">{author.username}</span>
+                                  {author.name !== author.username && (
+                                    <span className="text-muted-foreground text-xs">({author.name})</span>
+                                  )}
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                       <ImagePlus className="size-3" />
