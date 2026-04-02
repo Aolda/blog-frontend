@@ -1,12 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect } from "react";
-import { usePosts } from "@/lib/queries";
+import { useEffect, useState } from "react";
+import { usePosts, useDeletePost } from "@/lib/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Plus, Clock, Eye, ChevronLeft, ChevronRight, Loader2, PenSquare } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileText, Plus, Clock, Eye, ChevronLeft, ChevronRight, Loader2, PenSquare, Trash2, Users } from "lucide-react";
 
 interface PostsSearch {
   page?: number;
@@ -27,6 +35,8 @@ function PostsPage() {
   const navigate = useNavigate();
   const { page = 1 } = Route.useSearch();
   const { data: posts = [], isLoading, isError } = usePosts(page, PAGE_SIZE);
+  const deletePost = useDeletePost();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -95,6 +105,7 @@ function PostsPage() {
             const description = post.description ?? "";
             const tags = post.tags ?? [];
             const date = post.frontmatter?.date || post.created_at.split("T")[0];
+            const authors = post.authors ?? post.frontmatter?.author ?? [];
 
             return (
               <Card
@@ -124,16 +135,23 @@ function PostsPage() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      asChild
-                    >
-                      <Link to="/write" search={{ postId: post.id }}>
-                        <PenSquare className="size-4" />
-                      </Link>
-                    </Button>
+                    {post.can_edit && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon-sm" asChild>
+                          <Link to="/write" search={{ postId: post.id }}>
+                            <PenSquare className="size-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="hover:text-destructive"
+                          onClick={() => setDeletingId(post.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -150,6 +168,10 @@ function PostsPage() {
                       <div />
                     )}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Users className="size-3.5" />
+                        {authors.join(", ")}
+                      </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="size-3.5" />
                         {date}
@@ -196,6 +218,39 @@ function PostsPage() {
           </Button>
         </div>
       )}
+
+      <Dialog
+        open={deletingId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>게시글 삭제</DialogTitle>
+            <DialogDescription>정말 이 게시글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingId(null)} disabled={deletePost.isPending}>
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deletePost.isPending}
+              onClick={() => {
+                if (deletingId !== null) {
+                  deletePost.mutate(deletingId, {
+                    onSuccess: () => setDeletingId(null),
+                  });
+                }
+              }}
+            >
+              {deletePost.isPending && <Loader2 className="size-4 animate-spin" />}
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
