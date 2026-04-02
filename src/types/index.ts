@@ -26,6 +26,7 @@ export interface Token {
 export interface PostTemplate {
   post_id: number;
   author_name: string;
+  author_names: string[];
   created_at: string;
   frontmatter_example: string;
 }
@@ -57,6 +58,8 @@ export interface PostFrontmatter {
 export interface PostSummaryResponse {
   id: number;
   author_id: number | null;
+  authors: string[];
+  can_edit: boolean;
   views: number;
   created_at: string;
   title: string | null;
@@ -79,6 +82,7 @@ export interface PostContentUpdateRequest {
   tags: string[];
   image: string | null;
   content: string;
+  authors?: string[];
 }
 
 export interface ViewsResponse {
@@ -106,7 +110,7 @@ export interface AuthorResponse {
   username: string;
   name: string;
   bio: string;
-  avatar: string;
+  avatar: string | null;
   website: string | null;
   github: string | null;
   gitlab: string | null;

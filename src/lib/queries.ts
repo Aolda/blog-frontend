@@ -22,18 +22,6 @@ export function useMe() {
   });
 }
 
-export function useUsers(page = 1, limit = 10) {
-  return useQuery<User[]>({
-    queryKey: ["users", page, limit],
-    queryFn: async () => {
-      const { data } = await api.get<User[]>("/users/", {
-        params: { page, limit },
-      });
-      return data;
-    },
-  });
-}
-
 export function useAuthors(skip = 0, limit = 100) {
   return useQuery<AuthorResponse[]>({
     queryKey: ["authors", skip, limit],
@@ -148,21 +136,35 @@ export function useSavePostContent() {
       tags: string[];
       image: string | null;
       content: string;
+      authors?: string[];
     }
   >({
-    mutationFn: async ({ postId, title, description, tags, image, content }) => {
+    mutationFn: async ({ postId, title, description, tags, image, content, authors }) => {
       const body: PostContentUpdateRequest = {
         title,
         description,
         tags,
         image,
         content,
+        authors,
       };
       const { data } = await api.put<PostResponse>(`/posts/${postId}/content`, body);
       return data;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["post", variables.postId] });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+}
+
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, number>({
+    mutationFn: async (postId) => {
+      await api.delete(`/posts/${postId}`);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
