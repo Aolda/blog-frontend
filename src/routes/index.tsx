@@ -29,15 +29,7 @@ const actions = [
 ];
 
 function HomePage() {
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">로딩 중...</p>
-      </div>
-    );
-  }
+  const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
     return <LandingPage />;

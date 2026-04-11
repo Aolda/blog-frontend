@@ -6,6 +6,7 @@ import { toDateOnly } from "@/lib/date";
 import { buildFrontmatterHeader } from "@/lib/frontmatter";
 import type { PostTemplate } from "@/types";
 import { usePost, useSavePostContent, useAuthors } from "@/lib/queries";
+import LoadingState from "@/components/LoadingState";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -272,12 +273,7 @@ function WritePage() {
   );
 
   if (isEditMode && isLoadingPost) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">게시글 불러오는 중...</p>
-      </div>
-    );
+    return <LoadingState message="게시글 불러오는 중..." className="min-h-[60vh]" />;
   }
 
   if (isEditMode && isPostError) {
@@ -292,12 +288,7 @@ function WritePage() {
   }
 
   if (!isEditMode && isCreatingTemplate && !activePostId) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">템플릿 생성 중...</p>
-      </div>
-    );
+    return <LoadingState message="템플릿 생성 중..." className="min-h-[60vh]" />;
   }
 
   if (!isEditMode && createTemplateError && !activePostId) {
@@ -625,5 +616,5 @@ function WritePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
+import LoadingState from "@/components/LoadingState";
 import { useAuth } from "@/contexts/auth-context";
 import { clearTokens } from "@/lib/auth";
 import { clearAuthRedirect, getAuthRedirect } from "@/lib/auth-redirect";
@@ -56,9 +57,5 @@ function AuthCallbackPage() {
       });
   }, [login, navigate, router]);
 
-  return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-      <p className="text-sm text-muted-foreground">로그인 처리 중...</p>
-    </div>
-  );
+  return <LoadingState message="로그인 처리 중..." className="min-h-[calc(100vh-3.5rem)]" />;
 }

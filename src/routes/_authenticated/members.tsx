@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthors } from "@/lib/queries";
+import LoadingState from "@/components/LoadingState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Users, ChevronLeft, ChevronRight, Loader2, Globe, Github, Linkedin, Mail, User } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, Globe, Github, Linkedin, Mail, User } from "lucide-react";
 
 interface MembersSearch {
   page?: number;
@@ -41,12 +42,7 @@ function MembersPage() {
       <Separator />
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="size-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">구성원을 불러오는 중...</p>
-          </div>
-        </div>
+        <LoadingState message="구성원을 불러오는 중..." className="py-24" />
       ) : isError ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="size-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">

@@ -2,10 +2,11 @@ import { isAxiosError } from "axios";
 import { useCallback, useRef, useState } from "react";
 import { useUploadImage, useDeleteImage, usePostImages } from "@/lib/queries";
 import type { ApiError, ImageResponse } from "@/types";
+import LoadingState from "@/components/LoadingState";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Upload, Copy, Trash2, Link, Loader2, ImagePlus, X } from "lucide-react";
+import { Upload, Copy, Trash2, Link, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface ImagePanelProps {
@@ -156,10 +157,7 @@ export default function ImagePanel({ postId, onInsert }: ImagePanelProps) {
         `}
       >
         {uploadImage.isPending ? (
-          <>
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">업로드 중...</p>
-          </>
+          <LoadingState message="업로드 중..." className="gap-2" iconClassName="size-6" messageClassName="text-xs" />
         ) : (
           <>
             <Upload className="size-6 text-muted-foreground" />
@@ -216,9 +214,12 @@ export default function ImagePanel({ postId, onInsert }: ImagePanelProps) {
 
       <ScrollArea className="mt-3 flex-1">
         {isLoadingImages ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState
+            message="이미지를 불러오는 중..."
+            className="py-8"
+            iconClassName="size-5"
+            messageClassName="text-xs"
+          />
         ) : images.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">업로드된 이미지가 없습니다</p>
         ) : (
