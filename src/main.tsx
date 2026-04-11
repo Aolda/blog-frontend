@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
-import LoadingState from "@/components/LoadingState";
+import { LoadingState } from "@/components/loading-state";
 import { router } from "@/router";
 
 import "./styles.css";

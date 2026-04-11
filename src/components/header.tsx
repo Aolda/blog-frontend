@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PenSquare, User, LogOut, Settings, FileText, Users } from "lucide-react";
 
-export default function Header() {
+export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const router = useRouter();

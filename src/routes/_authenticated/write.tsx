@@ -6,7 +6,7 @@ import { toDateOnly } from "@/lib/date";
 import { buildFrontmatterHeader } from "@/lib/frontmatter";
 import type { PostTemplate } from "@/types";
 import { usePost, useSavePostContent, useAuthors } from "@/lib/queries";
-import LoadingState from "@/components/LoadingState";
+import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ import {
   AlignLeft,
   Users,
 } from "lucide-react";
-import ImagePanel from "@/components/ImagePanel";
+import ImagePanel from "@/components/image-panel";
 
 interface WriteSearch {
   postId?: number;

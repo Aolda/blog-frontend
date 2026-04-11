@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
-import LoadingState from "@/components/LoadingState";
+import { LoadingState } from "@/components/loading-state";
 import { useAuth } from "@/contexts/auth-context";
 import { clearTokens } from "@/lib/auth";
 import { clearAuthRedirect, getAuthRedirect } from "@/lib/auth-redirect";

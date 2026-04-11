@@ -2,7 +2,7 @@ import { isAxiosError } from "axios";
 import { useCallback, useRef, useState } from "react";
 import { useUploadImage, useDeleteImage, usePostImages } from "@/lib/queries";
 import type { ApiError, ImageResponse } from "@/types";
-import LoadingState from "@/components/LoadingState";
+import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";

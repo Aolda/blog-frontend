@@ -9,7 +9,7 @@ interface LoadingStateProps {
   messageClassName?: string;
 }
 
-export default function LoadingState({ message, className, iconClassName, messageClassName }: LoadingStateProps) {
+export function LoadingState({ message, className, iconClassName, messageClassName }: LoadingStateProps) {
   return (
     <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
       <Loader2 className={cn("size-8 animate-spin text-muted-foreground", iconClassName)} />
