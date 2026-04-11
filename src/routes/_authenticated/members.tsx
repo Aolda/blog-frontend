@@ -68,7 +68,7 @@ function MembersPage() {
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
                   <Avatar className="size-20 ring-2 ring-primary/10 ring-offset-2 ring-offset-background group-hover:ring-primary/30 transition-all">
-                    <AvatarImage src={author.avatar} alt={author.name} />
+                    <AvatarImage src={author.avatar ?? undefined} alt={author.name} />
                     <AvatarFallback className="bg-primary/5">
                       <User className="size-10 text-muted-foreground" />
                     </AvatarFallback>
