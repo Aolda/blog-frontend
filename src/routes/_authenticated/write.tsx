@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/contexts/auth-context";
 import api from "@/lib/api";
 import { toDateOnly } from "@/lib/date";
 import { buildFrontmatterHeader } from "@/lib/frontmatter";
@@ -41,7 +40,7 @@ function isRequestCanceled(error: unknown): boolean {
   return e.name === "AbortError" || e.name === "CanceledError" || e.code === "ERR_CANCELED";
 }
 
-export const Route = createFileRoute("/write")({
+export const Route = createFileRoute("/_authenticated/write")({
   component: WritePage,
   validateSearch: (search: Record<string, unknown>): WriteSearch => ({
     postId:
@@ -54,7 +53,6 @@ export const Route = createFileRoute("/write")({
 });
 
 function WritePage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { postId: editPostId } = Route.useSearch();
   const navigate = useNavigate();
 
@@ -88,12 +86,6 @@ function WritePage() {
   const { data: allAuthors = [] } = useAuthors(0, 100);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (authorSuggestionsRef.current && !authorSuggestionsRef.current.contains(e.target as Node)) {
         setShowAuthorSuggestions(false);
@@ -120,7 +112,6 @@ function WritePage() {
 
   useEffect(() => {
     if (isEditMode) return;
-    if (!isAuthenticated) return;
 
     let isActive = true;
     const controller = new AbortController();
@@ -177,7 +168,7 @@ function WritePage() {
       }
       controller.abort();
     };
-  }, [isAuthenticated, retrySeed, isEditMode]);
+  }, [retrySeed, isEditMode]);
 
   const handleSave = () => {
     if (!activePostId) {
@@ -279,10 +270,6 @@ function WritePage() {
     },
     [handleInsertImage],
   );
-
-  if (authLoading || !isAuthenticated) {
-    return null;
-  }
 
   if (isEditMode && isLoadingPost) {
     return (
@@ -638,5 +625,5 @@ function WritePage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

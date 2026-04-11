@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/contexts/auth-context";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toDateOnly } from "@/lib/date";
 import { usePosts, useDeletePost } from "@/lib/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,7 @@ interface PostsSearch {
   page?: number;
 }
 
-export const Route = createFileRoute("/posts")({
+export const Route = createFileRoute("/_authenticated/posts")({
   component: PostsPage,
   validateSearch: (search: Record<string, unknown>): PostsSearch => ({
     page:
@@ -32,22 +31,11 @@ export const Route = createFileRoute("/posts")({
 const PAGE_SIZE = 20;
 
 function PostsPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { page = 1 } = Route.useSearch();
   const { data: posts = [], isLoading, isError } = usePosts(page, PAGE_SIZE);
   const deletePost = useDeletePost();
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  if (authLoading || !isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">

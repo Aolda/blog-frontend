@@ -1,6 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@/contexts/auth-context";
-import { useEffect } from "react";
 import { useAuthors } from "@/lib/queries";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +10,7 @@ interface MembersSearch {
   page?: number;
 }
 
-export const Route = createFileRoute("/members")({
+export const Route = createFileRoute("/_authenticated/members")({
   component: MembersPage,
   validateSearch: (search: Record<string, unknown>): MembersSearch => ({
     page:
@@ -23,21 +21,10 @@ export const Route = createFileRoute("/members")({
 const PAGE_SIZE = 12;
 
 function MembersPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { page = 1 } = Route.useSearch();
   const skip = (page - 1) * PAGE_SIZE;
   const { data: authors = [], isLoading, isError } = useAuthors(skip, PAGE_SIZE);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
-
-  if (authLoading || !isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">

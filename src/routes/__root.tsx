@@ -1,9 +1,9 @@
-import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/contexts/auth-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Header";
+import type { AppRouterContext } from "@/router";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,22 +14,20 @@ const queryClient = new QueryClient({
   },
 });
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<AppRouterContext>()({
   component: RootLayout,
 });
 
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Header />
-          <main>
-            <Outlet />
-          </main>
-          <Toaster position="bottom-right" />
-        </TooltipProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <Header />
+        <main>
+          <Outlet />
+        </main>
+        <Toaster position="bottom-right" />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

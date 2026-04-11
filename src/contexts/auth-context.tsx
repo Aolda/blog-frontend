@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@/types";
 import { getAccessToken, setTokens, clearTokens } from "@/lib/auth";
 import api from "@/lib/api";
 
-interface AuthContextType {
+export interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -12,13 +12,13 @@ interface AuthContextType {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const { data } = await api.get<User>("/users/me");
       setUser(data);
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTokens();
       throw new Error("사용자 정보를 불러오지 못했습니다.");
     }
-  };
+  }, []);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -39,22 +39,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchUser]);
 
-  const login = async (accessToken: string, refreshToken: string) => {
-    setTokens(accessToken, refreshToken);
-    setIsLoading(true);
-    try {
-      return await fetchUser();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const login = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      setTokens(accessToken, refreshToken);
+      return fetchUser();
+    },
+    [fetchUser],
+  );
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearTokens();
     setUser(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

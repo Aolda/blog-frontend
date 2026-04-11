@@ -1,13 +1,31 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { storeAuthRedirect } from "@/lib/auth-redirect";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
+interface LoginSearch {
+  redirect?: string;
+}
+
+export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
+    redirect: typeof search.redirect === "string" && search.redirect.length > 0 ? search.redirect : undefined,
+  }),
+  beforeLoad: ({ context, search }) => {
+    if (context.auth.isAuthenticated) {
+      throw redirect({ href: search.redirect ?? "/" });
+    }
+  },
+  component: LoginPage,
+});
 
 function LoginPage() {
+  const { redirect: redirectTo } = Route.useSearch();
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
   const handleAoldaLogin = () => {
+    storeAuthRedirect(redirectTo ?? "/");
+
     const loginUrl = new URL(`${apiBaseUrl}/auth/login`);
     loginUrl.searchParams.set("console_page_url", window.location.origin);
     window.location.href = loginUrl.toString();

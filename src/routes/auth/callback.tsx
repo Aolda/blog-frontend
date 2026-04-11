@@ -1,8 +1,9 @@
-import { useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { clearTokens } from "@/lib/auth";
+import { clearAuthRedirect, getAuthRedirect } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth/callback")({
   component: AuthCallbackPage,
@@ -10,9 +11,16 @@ export const Route = createFileRoute("/auth/callback")({
 
 function AuthCallbackPage() {
   const navigate = useNavigate();
-  const auth = useAuth();
+  const router = useRouter();
+  const { login } = useAuth();
+  const hasHandledCallback = useRef(false);
 
   useEffect(() => {
+    if (hasHandledCallback.current) {
+      return;
+    }
+    hasHandledCallback.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status");
     const accessToken = params.get("access_token");
@@ -20,23 +28,33 @@ function AuthCallbackPage() {
     const detail = params.get("detail");
 
     if (status !== "success" || !accessToken || !refreshToken) {
+      clearAuthRedirect();
       clearTokens();
       toast.error(detail ?? "로그인에 실패했습니다. 다시 시도해주세요.");
       navigate({ to: "/login" });
       return;
     }
 
-    auth
-      .login(accessToken, refreshToken)
+    const redirectTarget = getAuthRedirect() ?? "/";
+
+    login(accessToken, refreshToken)
       .then(() => {
-        navigate({ to: "/" });
+        return router.invalidate().finally(() => {
+          clearAuthRedirect();
+          router.history.push(redirectTarget);
+        });
       })
       .catch(() => {
         clearTokens();
         toast.error("로그인 처리에 실패했습니다. 다시 시도해주세요.");
-        navigate({ to: "/login" });
+        navigate({
+          to: "/login",
+          search: {
+            redirect: redirectTarget,
+          },
+        });
       });
-  }, []);
+  }, [login, navigate, router]);
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">

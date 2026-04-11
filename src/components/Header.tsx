@@ -1,5 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
+import { clearAuthRedirect } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,6 +14,16 @@ import { PenSquare, User, LogOut, Settings, FileText, Users } from "lucide-react
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    clearAuthRedirect();
+    logout();
+    void router.invalidate().finally(() => {
+      navigate({ to: "/" });
+    });
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -73,7 +84,7 @@ export default function Header() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="size-4" />
                   로그아웃
                 </DropdownMenuItem>

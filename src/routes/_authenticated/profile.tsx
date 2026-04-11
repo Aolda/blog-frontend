@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Save, Loader2, User, Globe, Github, Gitlab, Linkedin, MessageCircle, Mail, Calendar } from "lucide-react";
 import { toast } from "sonner";
@@ -16,11 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-export const Route = createFileRoute("/profile")({ component: ProfilePage });
+export const Route = createFileRoute("/_authenticated/profile")({ component: ProfilePage });
 
 function ProfilePage() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const updateProfile = useUpdateProfile();
 
@@ -33,12 +32,6 @@ function ProfilePage() {
   const [linkedin, setLinkedin] = useState("");
   const [discord, setDiscord] = useState("");
   const [mail, setMail] = useState("");
-
-  useEffect(() => {
-    if (!auth.isAuthenticated && !auth.isLoading) {
-      navigate({ to: "/login" });
-    }
-  }, [auth.isAuthenticated, auth.isLoading, navigate]);
 
   useEffect(() => {
     if (auth.user) {
@@ -85,14 +78,6 @@ function ProfilePage() {
     );
   };
 
-  if (auth.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   if (!auth.user) {
     return null;
   }
@@ -122,9 +107,7 @@ function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>
-                    {formatKoreanDate(user.created_at)}
-                  </span>
+                  <span>{formatKoreanDate(user.created_at)}</span>
                 </div>
               </div>
             </div>
