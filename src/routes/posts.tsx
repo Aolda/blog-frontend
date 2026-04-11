@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState } from "react";
+import { toDateOnly } from "@/lib/date";
 import { usePosts, useDeletePost } from "@/lib/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,7 @@ function PostsPage() {
             const title = post.title ?? "제목 없음";
             const description = post.description ?? "";
             const tags = post.tags;
-            const date = post.created_at.split("T")[0];
+            const date = toDateOnly(post.created_at);
             const authors = post.authors;
 
             return (

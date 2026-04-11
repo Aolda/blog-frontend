@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth-context";
 import { useUpdateProfile } from "@/lib/queries";
 import { getAccessToken, getRefreshToken } from "@/lib/auth";
+import { formatKoreanDate } from "@/lib/date";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -122,11 +123,7 @@ function ProfilePage() {
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Calendar className="w-3.5 h-3.5" />
                   <span>
-                    {new Date(user.created_at).toLocaleDateString("ko-KR", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatKoreanDate(user.created_at)}
                   </span>
                 </div>
               </div>

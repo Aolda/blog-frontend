@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import api from "@/lib/api";
+import { toDateOnly } from "@/lib/date";
+import { buildFrontmatterHeader } from "@/lib/frontmatter";
 import type { PostTemplate } from "@/types";
 import { usePost, useSavePostContent, useAuthors } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
@@ -37,41 +39,6 @@ function isRequestCanceled(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const e = error as { name?: string; code?: string };
   return e.name === "AbortError" || e.name === "CanceledError" || e.code === "ERR_CANCELED";
-}
-
-function formatYamlString(value: string): string {
-  return JSON.stringify(value);
-}
-
-function formatYamlArray(values: string[]): string {
-  return `[${values.map((value) => formatYamlString(value)).join(", ")}]`;
-}
-
-function toPostDate(createdAt: string): string {
-  return createdAt.split("T")[0];
-}
-
-function buildFullContent(metadata: {
-  date: string;
-  authors: string[];
-  title: string;
-  description: string;
-  tags: string[];
-  image: string;
-  body: string;
-}): string {
-  return [
-    "---",
-    `title: ${formatYamlString(metadata.title)}`,
-    `description: ${formatYamlString(metadata.description)}`,
-    `date: ${metadata.date}`,
-    `tags: ${formatYamlArray(metadata.tags)}`,
-    `image: ${formatYamlString(metadata.image)}`,
-    `author: ${formatYamlArray(metadata.authors)}`,
-    "---",
-    "",
-    metadata.body,
-  ].join("\n");
 }
 
 export const Route = createFileRoute("/write")({
@@ -140,7 +107,7 @@ function WritePage() {
     if (!isEditMode || !existingPost) return;
 
     setActivePostId(existingPost.id);
-    setPostDate(toPostDate(existingPost.created_at));
+    setPostDate(toDateOnly(existingPost.created_at));
     setAuthors(existingPost.authors);
     setTitle(existingPost.title ?? "");
     setDescription(existingPost.description ?? "");
@@ -182,7 +149,7 @@ function WritePage() {
         .then(({ data }) => {
           if (!isActive) return;
           setActivePostId(data.post_id);
-          setPostDate(toPostDate(data.created_at));
+          setPostDate(toDateOnly(data.created_at));
           setAuthors(data.author_names);
         })
         .catch((error) => {
@@ -372,15 +339,15 @@ function WritePage() {
         author.name.toLowerCase().includes(authorSearch.toLowerCase())),
   );
 
-  const fullContent = buildFullContent({
+  const frontmatterHeader = buildFrontmatterHeader({
     date: postDate,
     authors,
     title,
     description,
     tags,
     image,
-    body,
   });
+  const fullContent = [frontmatterHeader, "", body].join("\n");
   const currentTitle = title || "제목 없음";
 
   const handleCopy = async () => {
