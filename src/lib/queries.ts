@@ -3,6 +3,7 @@ import api from "@/lib/api";
 import type {
   User,
   Token,
+  PostTemplate,
   PostResponse,
   PostSummaryResponse,
   ImageUploadResponse,
@@ -11,6 +12,10 @@ import type {
   UpdateProfileRequest,
   AuthorResponse,
 } from "@/types";
+
+// This is a local workaround for React StrictMode's double-invoked mount effects in development.
+// TanStack Query deduplicates queries by queryKey, but mutations do not have built-in request dedupe.
+let pendingPostTemplateRequest: Promise<PostTemplate> | null = null;
 
 export function useMe() {
   return useQuery<User>({
@@ -80,6 +85,23 @@ export function usePost(postId: number | null) {
       return data;
     },
     enabled: postId !== null,
+  });
+}
+
+export function useCreatePostTemplate() {
+  return useMutation<PostTemplate, Error, void>({
+    mutationFn: async () => {
+      if (!pendingPostTemplateRequest) {
+        pendingPostTemplateRequest = api
+          .post<PostTemplate>("/posts/template")
+          .then(({ data }) => data)
+          .finally(() => {
+            pendingPostTemplateRequest = null;
+          });
+      }
+
+      return pendingPostTemplateRequest;
+    },
   });
 }
 

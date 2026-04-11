@@ -18,7 +18,12 @@ const actions = [
     icon: PenSquare,
     to: "/write" as const,
   },
-  { title: "게시글 관리", description: "발행된 게시글을 확인하고 수정합니다.", icon: Newspaper, to: "/posts" as const },
+  {
+    title: "게시글 관리",
+    description: "발행된 게시글을 확인하고 수정합니다.",
+    icon: Newspaper,
+    to: "/posts" as const,
+  },
   { title: "구성원 목록", description: "블로그 구성원을 확인하고 관리합니다.", icon: Users, to: "/members" as const },
   {
     title: "프로필 수정",

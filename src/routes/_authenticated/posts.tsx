@@ -103,7 +103,7 @@ function PostsPage() {
                       <div className="flex items-center gap-2.5 mb-1">
                         <CardTitle className="text-base leading-tight">
                           <Link
-                            to="/write"
+                            to="/edit"
                             search={{ postId: post.id }}
                             className="hover:text-primary transition-colors line-clamp-1"
                           >
@@ -123,7 +123,7 @@ function PostsPage() {
                     {post.can_edit && (
                       <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="icon-sm" asChild>
-                          <Link to="/write" search={{ postId: post.id }}>
+                          <Link to="/edit" search={{ postId: post.id }}>
                             <PenSquare className="size-4" />
                           </Link>
                         </Button>
