@@ -33,11 +33,6 @@ interface WriteSearch {
   postId?: number;
 }
 
-interface FrontmatterContext {
-  date: string;
-  author: string[];
-}
-
 function isRequestCanceled(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const e = error as { name?: string; code?: string };
@@ -52,28 +47,27 @@ function formatYamlArray(values: string[]): string {
   return `[${values.map((value) => formatYamlString(value)).join(", ")}]`;
 }
 
-function buildFullContent(
-  metadata: {
-    title: string;
-    description: string;
-    tags: string[];
-    image: string;
-    body: string;
-  },
-  context: FrontmatterContext | null,
-): string {
-  if (!context) {
-    return metadata.body;
-  }
+function toPostDate(createdAt: string): string {
+  return createdAt.split("T")[0];
+}
 
+function buildFullContent(metadata: {
+  date: string;
+  authors: string[];
+  title: string;
+  description: string;
+  tags: string[];
+  image: string;
+  body: string;
+}): string {
   return [
     "---",
     `title: ${formatYamlString(metadata.title)}`,
     `description: ${formatYamlString(metadata.description)}`,
-    `date: ${context.date}`,
+    `date: ${metadata.date}`,
     `tags: ${formatYamlArray(metadata.tags)}`,
     `image: ${formatYamlString(metadata.image)}`,
-    `author: ${formatYamlArray(context.author)}`,
+    `author: ${formatYamlArray(metadata.authors)}`,
     "---",
     "",
     metadata.body,
@@ -93,20 +87,19 @@ export const Route = createFileRoute("/write")({
 });
 
 function WritePage() {
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { postId: editPostId } = Route.useSearch();
   const navigate = useNavigate();
-  const hasInitialized = useRef(false);
-  const templateRequestSeq = useRef(0);
 
-  const [activePostId, setActivePostId] = useState<number | null>(editPostId ?? null);
+  const [activePostId, setActivePostId] = useState<number | null>(null);
+  const [postDate, setPostDate] = useState("");
+  const [authors, setAuthors] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [image, setImage] = useState("");
   const [body, setBody] = useState("");
-  const [frontmatterContext, setFrontmatterContext] = useState<FrontmatterContext | null>(null);
   const [showImages, setShowImages] = useState(false);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
@@ -144,70 +137,77 @@ function WritePage() {
   }, []);
 
   useEffect(() => {
-    if (!isEditMode || !existingPost || hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (!isEditMode || !existingPost) return;
 
     setActivePostId(existingPost.id);
+    setPostDate(toPostDate(existingPost.created_at));
+    setAuthors(existingPost.authors);
     setTitle(existingPost.title ?? "");
     setDescription(existingPost.description ?? "");
-    setTags(existingPost.tags ?? []);
+    setTags(existingPost.tags);
     setImage(existingPost.image ?? "");
     setBody(existingPost.content ?? "");
-    setFrontmatterContext({
-      date: existingPost.frontmatter.date,
-      author: existingPost.frontmatter.author,
-    });
+    setAuthorSearch("");
+    setShowAuthorSuggestions(false);
   }, [isEditMode, existingPost]);
 
   useEffect(() => {
     if (isEditMode) return;
-    if (!isAuthenticated || hasInitialized.current) return;
-    hasInitialized.current = true;
+    if (!isAuthenticated) return;
 
     let isActive = true;
-    const requestSeq = ++templateRequestSeq.current;
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+    let abortTimeoutId: number | null = null;
+
+    setActivePostId(null);
+    setPostDate("");
+    setAuthors([]);
+    setTitle("");
+    setDescription("");
+    setTags([]);
+    setImage("");
+    setBody("");
+    setAuthorSearch("");
+    setShowAuthorSuggestions(false);
     setIsCreatingTemplate(true);
     setCreateTemplateError(null);
 
-    const initializeTemplate = async () => {
-      try {
-        const { data } = await api.post<PostTemplate>("/posts/template", undefined, {
-          signal: controller.signal,
-        });
-        if (!isActive || requestSeq !== templateRequestSeq.current) return;
-        setActivePostId(data.post_id);
-        setTitle("");
-        setDescription("");
-        setTags([]);
-        setImage("");
-        setBody("");
-        setFrontmatterContext({
-          date: data.created_at,
-          author: data.author_names,
-        });
-      } catch (error) {
-        if (!isActive || requestSeq !== templateRequestSeq.current) return;
-        setCreateTemplateError(
-          isRequestCanceled(error)
-            ? "요청이 지연되어 템플릿 생성을 중단했습니다. 다시 시도해주세요."
-            : "템플릿 생성에 실패했습니다.",
-        );
-      } finally {
-        window.clearTimeout(timeoutId);
-        if (isActive && requestSeq === templateRequestSeq.current) {
-          setIsCreatingTemplate(false);
-        }
-      }
-    };
+    const requestStartId = window.setTimeout(() => {
+      abortTimeoutId = window.setTimeout(() => controller.abort(), 15000);
 
-    void initializeTemplate();
+      void api
+        .post<PostTemplate>("/posts/template", undefined, {
+          signal: controller.signal,
+        })
+        .then(({ data }) => {
+          if (!isActive) return;
+          setActivePostId(data.post_id);
+          setPostDate(toPostDate(data.created_at));
+          setAuthors(data.author_names);
+        })
+        .catch((error) => {
+          if (!isActive) return;
+          setCreateTemplateError(
+            isRequestCanceled(error)
+              ? "요청이 지연되어 템플릿 생성을 중단했습니다. 다시 시도해주세요."
+              : "템플릿 생성에 실패했습니다.",
+          );
+        })
+        .finally(() => {
+          if (abortTimeoutId !== null) {
+            window.clearTimeout(abortTimeoutId);
+          }
+          if (!isActive) return;
+          setIsCreatingTemplate(false);
+        });
+    }, 0);
 
     return () => {
       isActive = false;
-      hasInitialized.current = false;
-      window.clearTimeout(timeoutId);
+      window.clearTimeout(requestStartId);
+      if (abortTimeoutId !== null) {
+        window.clearTimeout(abortTimeoutId);
+      }
       controller.abort();
     };
   }, [isAuthenticated, retrySeed, isEditMode]);
@@ -225,7 +225,7 @@ function WritePage() {
         tags,
         image: image || null,
         content: body,
-        authors: frontmatterContext?.author,
+        authors,
       },
       {
         onSuccess: () => {
@@ -245,29 +245,17 @@ function WritePage() {
 
   const addAuthor = useCallback(
     (username: string) => {
-      if (!frontmatterContext) return;
-      if (frontmatterContext.author.includes(username)) return;
-      setFrontmatterContext({
-        ...frontmatterContext,
-        author: [...frontmatterContext.author, username],
-      });
+      if (authors.includes(username)) return;
+      setAuthors((prev) => [...prev, username]);
       setAuthorSearch("");
       setShowAuthorSuggestions(false);
     },
-    [frontmatterContext],
+    [authors],
   );
 
-  const removeAuthor = useCallback(
-    (username: string) => {
-      if (!frontmatterContext) return;
-      if (user && username === user.username) return;
-      setFrontmatterContext({
-        ...frontmatterContext,
-        author: frontmatterContext.author.filter((a) => a !== username),
-      });
-    },
-    [frontmatterContext, user],
-  );
+  const removeAuthor = useCallback((username: string) => {
+    setAuthors((prev) => prev.filter((author) => author !== username));
+  }, []);
 
   const handleTagKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -366,7 +354,6 @@ function WritePage() {
           variant="outline"
           size="sm"
           onClick={() => {
-            hasInitialized.current = false;
             setActivePostId(null);
             setCreateTemplateError(null);
             setRetrySeed((prev) => prev + 1);
@@ -378,7 +365,22 @@ function WritePage() {
     );
   }
 
-  const fullContent = buildFullContent({ title, description, tags, image, body }, frontmatterContext);
+  const filteredAuthors = allAuthors.filter(
+    (author) =>
+      !authors.includes(author.username) &&
+      (author.username.toLowerCase().includes(authorSearch.toLowerCase()) ||
+        author.name.toLowerCase().includes(authorSearch.toLowerCase())),
+  );
+
+  const fullContent = buildFullContent({
+    date: postDate,
+    authors,
+    title,
+    description,
+    tags,
+    image,
+    body,
+  });
   const currentTitle = title || "제목 없음";
 
   const handleCopy = async () => {
@@ -530,23 +532,18 @@ function WritePage() {
                       작성자
                     </label>
                     <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 border rounded-md bg-background min-h-8 relative">
-                      {frontmatterContext?.author.map((username) => {
-                        const isSelf = user?.username === username;
-                        return (
-                          <Badge key={username} variant="secondary" className="gap-0.5 text-[11px]">
-                            {username}
-                            {!isSelf && (
-                              <button
-                                type="button"
-                                onClick={() => removeAuthor(username)}
-                                className="ml-0.5 p-0.5 rounded-sm hover:bg-destructive/20 hover:text-destructive transition-colors"
-                              >
-                                <X className="size-2.5" />
-                              </button>
-                            )}
-                          </Badge>
-                        );
-                      })}
+                      {authors.map((username) => (
+                        <Badge key={username} variant="secondary" className="gap-0.5 text-[11px]">
+                          {username}
+                          <button
+                            type="button"
+                            onClick={() => removeAuthor(username)}
+                            className="ml-0.5 p-0.5 rounded-sm hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          >
+                            <X className="size-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
                       <input
                         value={authorSearch}
                         onChange={(e) => {
@@ -554,39 +551,27 @@ function WritePage() {
                           setShowAuthorSuggestions(true);
                         }}
                         onFocus={() => setShowAuthorSuggestions(true)}
-                        placeholder={frontmatterContext && frontmatterContext.author.length > 0 ? "" : "작성자 검색..."}
+                        placeholder={authors.length > 0 ? "" : "작성자 검색..."}
                         className="flex-1 min-w-25 text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
                       />
                       {showAuthorSuggestions && (
                         <div className="absolute left-0 right-0 top-full mt-1 z-50 border rounded-md bg-popover shadow-md max-h-48 overflow-y-auto">
-                          {allAuthors.filter(
-                            (a) =>
-                              !frontmatterContext?.author.includes(a.username) &&
-                              (a.username.toLowerCase().includes(authorSearch.toLowerCase()) ||
-                                a.name.toLowerCase().includes(authorSearch.toLowerCase())),
-                          ).length === 0 ? (
+                          {filteredAuthors.length === 0 ? (
                             <div className="px-3 py-2 text-xs text-muted-foreground">검색 결과 없음</div>
                           ) : (
-                            allAuthors
-                              .filter(
-                                (a) =>
-                                  !frontmatterContext?.author.includes(a.username) &&
-                                  (a.username.toLowerCase().includes(authorSearch.toLowerCase()) ||
-                                    a.name.toLowerCase().includes(authorSearch.toLowerCase())),
-                              )
-                              .map((author) => (
-                                <button
-                                  key={author.username}
-                                  type="button"
-                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                                  onClick={() => addAuthor(author.username)}
-                                >
-                                  <span className="font-medium">{author.username}</span>
-                                  {author.name !== author.username && (
-                                    <span className="text-muted-foreground text-xs">({author.name})</span>
-                                  )}
-                                </button>
-                              ))
+                            filteredAuthors.map((author) => (
+                              <button
+                                key={author.username}
+                                type="button"
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                                onClick={() => addAuthor(author.username)}
+                              >
+                                <span className="font-medium">{author.username}</span>
+                                {author.name !== author.username && (
+                                  <span className="text-muted-foreground text-xs">({author.name})</span>
+                                )}
+                              </button>
+                            ))
                           )}
                         </div>
                       )}

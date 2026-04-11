@@ -103,9 +103,9 @@ function PostsPage() {
           {posts.map((post) => {
             const title = post.title ?? "제목 없음";
             const description = post.description ?? "";
-            const tags = post.tags ?? [];
-            const date = post.frontmatter?.date || post.created_at.split("T")[0];
-            const authors = post.authors ?? post.frontmatter?.author ?? [];
+            const tags = post.tags;
+            const date = post.created_at.split("T")[0];
+            const authors = post.authors;
 
             return (
               <Card

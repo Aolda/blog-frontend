@@ -44,16 +44,6 @@ export interface ImageResponse {
   created_at: string;
 }
 
-/** 서버가 생성하는 frontmatter 객체 */
-export interface PostFrontmatter {
-  title: string;
-  description: string;
-  date: string;
-  tags: string[];
-  image: string;
-  author: string[];
-}
-
 /** 게시글 목록 응답 (content 없음) */
 export interface PostSummaryResponse {
   id: number;
@@ -66,8 +56,6 @@ export interface PostSummaryResponse {
   description: string | null;
   tags: string[];
   image: string | null;
-  frontmatter: PostFrontmatter;
-  frontmatter_header: string;
 }
 
 /** 게시글 상세 응답 (content 포함) */
@@ -75,7 +63,7 @@ export interface PostResponse extends PostSummaryResponse {
   content: string | null;
 }
 
-/** 게시글 저장 요청 (메타데이터 + 본문 분리) */
+/** 게시글 저장 요청 */
 export interface PostContentUpdateRequest {
   title: string | null;
   description: string | null;

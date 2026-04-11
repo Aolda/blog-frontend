@@ -1,6 +1,7 @@
+import { isAxiosError } from "axios";
 import { useCallback, useRef, useState } from "react";
 import { useUploadImage, useDeleteImage, usePostImages } from "@/lib/queries";
-import type { ImageResponse } from "@/types";
+import type { ApiError, ImageResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -10,6 +11,23 @@ import { toast } from "sonner";
 interface ImagePanelProps {
   postId: number | null;
   onInsert?: (markdown: string) => void;
+}
+
+function getApiErrorMessage(error: unknown): string | null {
+  if (!isAxiosError<ApiError>(error)) {
+    return null;
+  }
+
+  const detail = error.response?.data?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail[0]?.msg ?? null;
+  }
+
+  return null;
 }
 
 export default function ImagePanel({ postId, onInsert }: ImagePanelProps) {
@@ -79,8 +97,14 @@ export default function ImagePanel({ postId, onInsert }: ImagePanelProps) {
           if (previewImage?.id === image.id) setPreviewImage(null);
           toast.success("이미지가 삭제되었습니다");
         },
-        onError: () => {
-          toast.error("삭제에 실패했습니다");
+        onError: (error) => {
+          const message = getApiErrorMessage(error);
+          if (message === "이미지 오브젝트 키가 없습니다.") {
+            toast.error("레거시 이미지라 삭제할 수 없습니다");
+            return;
+          }
+
+          toast.error(message ?? "삭제에 실패했습니다");
         },
       },
     );
